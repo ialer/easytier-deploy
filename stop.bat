@@ -8,20 +8,15 @@ echo   EasyTier 停止
 echo ================================
 echo.
 
-echo   [1/2] 停止 EasyTier-Core...
+echo   [1/2] 停止 Core...
 taskkill /F /IM easytier-core.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 echo   ✓ Core 已停止
 
-echo   [2/2] 停止仪表盘...
-:: 通过端口查找并杀掉Python进程
-for /f "tokens=5" %%p in ('netstat -aon ^| findstr ":15889" ^| findstr "LISTENING"') do (
-    taskkill /F /PID %%p >nul 2>&1
-)
-echo   ✓ 仪表盘已停止
+echo   [2/2] 停止 Dashboard...
+for /f "tokens=5" %%p in ('netstat -aon ^| findstr ":15889" ^| findstr "LISTENING"') do taskkill /F /PID %%p >nul 2>&1
+echo   ✓ Dashboard 已停止
 
 echo.
-echo   ================================
 echo   已停止
-echo   ================================
 timeout /t 2 /nobreak >nul
