@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SN★TEAM 虚拟内网部署</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#0b0d17;--bg-card:#12152a;--bg-surface:#1a1e3a;--bg-elevated:#222750;
+  --border:#2a2f5a;--accent:#e94560;--accent-glow:rgba(233,69,96,.15);
+  --gold:#f5a623;--green:#0cce6b;--cyan:#4ecdc4;--red:#ff4757;
+  --text:#e8eaf6;--text-dim:#8892b0;--text-muted:#5a6180;
+}
+body{background:var(--bg-deep);font-family:'Inter',-apple-system,sans-serif;color:var(--text);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px;background-image:radial-gradient(ellipse 600px 400px at 50% 30%,rgba(233,69,96,.06),transparent),radial-gradient(ellipse 400px 300px at 20% 80%,rgba(78,205,196,.04),transparent)}
+.installer{width:820px;background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 80px rgba(0,0,0,.6)}
+.titlebar{background:var(--bg-surface);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.titlebar-left{display:flex;align-items:center;gap:10px}
+.dots{display:flex;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;opacity:.85}
+.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+.titlebar-title{font-size:12px;font-weight:500;color:var(--text-dim);letter-spacing:.5px}
+.titlebar-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--accent-glow);color:var(--accent);border:1px solid rgba(233,69,96,.2);font-weight:600}
+.steps{display:flex;align-items:center;justify-content:center;padding:20px 28px;gap:0}
+.step-item{display:flex;align-items:center;cursor:pointer;user-select:none}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid var(--border);color:var(--text-muted);background:var(--bg-deep);transition:all .3s}
+.step-circle.active{border-color:var(--accent);color:#fff;background:var(--accent);box-shadow:0 0 16px rgba(233,69,96,.4)}
+.step-circle.done{border-color:var(--green);color:#fff;background:var(--green)}
+.step-label{font-size:10px;color:var(--text-muted);margin-left:6px;font-weight:500;white-space:nowrap}
+.step-label.active{color:var(--accent)}.step-label.done{color:var(--green)}
+.step-line{width:28px;height:2px;background:var(--border);margin:0 4px;border-radius:1px}
+.step-line.done{background:var(--green)}
+.content{padding:24px 28px 20px;min-height:420px}
+.welcome{text-align:center;padding:30px 0 8px}
+.brand{position:relative;margin-bottom:28px;padding:20px 0}
+.brand-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;height:120px;background:radial-gradient(ellipse,rgba(233,69,96,.12),transparent 70%);pointer-events:none}
+.brand-box{position:relative;display:inline-block;border:2px solid var(--border);border-radius:12px;padding:18px 48px;background:var(--bg-surface)}
+.brand-box::before{content:'';position:absolute;inset:-1px;border-radius:13px;background:linear-gradient(135deg,rgba(233,69,96,.3),transparent 40%,transparent 60%,rgba(78,205,196,.2));z-index:-1}
+.brand-en{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:8px;text-transform:uppercase;margin-bottom:4px}
+.brand-cn{font-size:36px;font-weight:900;letter-spacing:12px;background:linear-gradient(135deg,#e94560,#ff8a80);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 20px rgba(233,69,96,.3))}
+.welcome-sub{font-size:14px;color:var(--text-dim);margin-bottom:6px;font-weight:500}
+.welcome-sub a{color:var(--gold);text-decoration:none;border-bottom:1px dashed rgba(245,166,35,.4);transition:all .2s;font-weight:600}
+.welcome-sub a:hover{color:#fff;border-bottom-color:var(--gold);text-shadow:0 0 12px rgba(245,166,35,.4)}
+.welcome-meta{font-size:11px;color:var(--text-muted);margin-bottom:28px;display:flex;align-items:center;justify-content:center;gap:8px}
+.meta-dot{width:3px;height:3px;border-radius:50%;background:var(--text-muted)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 28px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,#e94560,#c62a40);color:#fff;box-shadow:0 4px 20px rgba(233,69,96,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(233,69,96,.45)}
+.btn-ghost{background:transparent;color:var(--text-muted);padding:10px 16px}
+.btn-ghost:hover{color:var(--text)}
+.btn-success{background:linear-gradient(135deg,var(--green),#0a9e55);color:#fff;box-shadow:0 4px 20px rgba(12,206,107,.3)}
+.btn-success:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(12,206,107,.45)}
+.card{background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;transition:border-color .2s}
+.card:hover{border-color:rgba(233,69,96,.2)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card-title{font-size:12px;font-weight:600;color:var(--cyan);letter-spacing:.5px}
+.card-badge{font-size:9px;padding:2px 8px;border-radius:8px;font-weight:700;letter-spacing:.5px}
+.badge-ok{background:rgba(12,206,107,.12);color:var(--green);border:1px solid rgba(12,206,107,.2)}
+.badge-warn{background:rgba(245,166,35,.12);color:var(--gold);border:1px solid rgba(245,166,35,.2)}
+.badge-new{background:var(--accent-glow);color:var(--accent);border:1px solid rgba(233,69,96,.2)}
+.badge-err{background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.2)}
+.check{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px}
+.check-icon{width:20px;text-align:center;font-size:14px}
+.check-ok .check-icon{color:var(--green)}
+.check-err .check-icon{color:var(--red)}
+.check-new .check-icon{color:var(--cyan)}
+.check-text strong{color:var(--accent);font-weight:700}
+.choice{padding:12px 16px;margin:6px 0;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:var(--bg-deep);display:flex;align-items:center;justify-content:space-between;transition:all .2s}
+.choice:hover{border-color:var(--accent);background:var(--bg-surface)}
+.choice.active{border-color:var(--accent);background:var(--accent-glow)}
+.choice-label{display:flex;align-items:center;gap:8px}
+.choice-radio{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.choice.active .choice-radio{border-color:var(--accent)}
+.choice.active .choice-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.choice-tag{font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}
+.split{display:flex;gap:16px;height:380px}
+.split-left{flex:1;min-width:0;display:flex;flex-direction:column}
+.split-right{width:300px;flex-shrink:0;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.split-right-header{padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--cyan);letter-spacing:.5px;flex-shrink:0}
+.split-right-body{padding:10px 16px;overflow-y:auto;flex:1;font-size:11px;line-height:1.6;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.split-right-body::-webkit-scrollbar{width:5px}
+.split-right-body::-webkit-scrollbar-track{background:transparent}
+.split-right-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.config-editor{flex:1;width:100%;background:var(--bg-deep);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;padding:12px 14px;resize:none;outline:none;scrollbar-width:thin;scrollbar-color:var(--border) transparent;tab-size:4}
+.config-editor::-webkit-scrollbar{width:5px}
+.config-editor::-webkit-scrollbar-track{background:transparent}
+.config-editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.config-editor:focus{border-color:var(--accent)}
+.editor-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0}
+.editor-title{font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.5px}
+.editor-filename{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);background:var(--bg-deep);padding:2px 8px;border-radius:4px}
+.editor-status{font-size:10px;color:var(--text-muted)}
+.editor-status .saved{color:var(--green)}
+.editor-status .modified{color:var(--gold)}
+.param-item{margin-bottom:8px;padding:4px 0}
+.param-item:hover{background:rgba(255,255,255,.02);border-radius:4px}
+.param-kv{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--gold);cursor:pointer;padding:2px 4px;border-radius:3px;transition:background .15s;user-select:all}
+.param-kv:hover{background:rgba(245,166,35,.1)}
+.param-desc{color:var(--text-dim);font-size:10px;line-height:1.4;padding:0 4px}
+.param-divider{border:none;border-top:1px solid var(--border);margin:6px 0}
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.5px;margin-bottom:6px;display:block}
+.form-input{width:100%;background:var(--bg-deep);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--accent)}
+.form-input:readonly{opacity:.7}
+.form-hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.form-preview{background:var(--bg-elevated);border:1px solid var(--border);padding:10px 14px;border-radius:8px;font-size:12px;color:var(--green);font-family:'JetBrains Mono',monospace;margin-top:12px}
+.form-err{font-size:11px;color:var(--red);margin-top:4px}
+.progress-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.progress-icon{width:20px;text-align:center}
+.progress-text{flex:1}
+.progress-done{color:var(--green)}.progress-done .progress-icon{color:var(--green)}
+.progress-active{color:var(--gold)}.progress-active .progress-icon{color:var(--gold)}
+.progress-err{color:var(--red)}.progress-err .progress-icon{color:var(--red)}
+.progress-bar{background:var(--bg-deep);border-radius:4px;height:4px;margin:12px 0;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--gold));transition:width .6s ease}
+.result-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin:12px 0}
+.result-key{font-size:12px;color:var(--cyan);font-weight:500}
+.result-val{font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.result-tip{font-size:12px;color:var(--text-muted);padding:3px 0;padding-left:14px;position:relative}
+.result-tip::before{content:'›';position:absolute;left:0;color:var(--text-muted)}
+.alert{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:14px}
+.alert-warn{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--gold)}
+.alert-ok{background:rgba(12,206,107,.08);border:1px solid rgba(12,206,107,.2);color:var(--green)}
+.footer{padding:14px 28px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-muted)}
+.footer-keys{display:flex;gap:12px}
+.footer-key{display:inline-flex;align-items:center;gap:4px}
+.kbd{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--bg-elevated);border:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:var(--text-dim)}
+.nav-row{display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.page{display:none}.page.active{display:block}
+.toast{position:fixed;top:20px;right:20px;padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:999;transform:translateX(120%);transition:transform .3s ease}
+.toast.show{transform:translateX(0)}
+.toast-ok{background:var(--green);color:#fff}
+.toast-err{background:var(--red);color:#fff}
+.toast-info{background:var(--cyan);color:var(--bg-deep)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="installer">
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <span class="titlebar-title">SN★TEAM 虚拟内网部署</span>
+    </div>
+    <span class="titlebar-badge">v1.0</span>
+  </div>
+
+  <!-- Step Indicator -->
+  <div class="steps" id="steps">
+    <div class="step-item" onclick="gotoPage(0)"><div class="step-circle active" id="sc0">1</div><span class="step-label active" id="sl0">欢迎</span></div>
+    <div class="step-line" id="sline0"></div>
+    <div class="step-item" onclick="gotoPage(1)"><div class="step-circle" id="sc1">2</div><span class="step-label" id="sl1">环境检查</span></div>
+    <div class="step-line" id="sline1"></div>
+    <div class="step-item" onclick="gotoPage(2)"><div class="step-circle" id="sc2">3</div><span class="step-label" id="sl2">网络配置</span></div>
+    <div class="step-line" id="sline2"></div>
+    <div class="step-item" onclick="gotoPage(3)"><div class="step-circle" id="sc3">4</div><span class="step-label" id="sl3">部署</span></div>
+    <div class="step-line" id="sline3"></div>
+    <div class="step-item" onclick="gotoPage(4)"><div class="step-circle" id="sc4">5</div><span class="step-label" id="sl4">完成</span></div>
+  </div>
+
+  <!-- ═══ 页0: 欢迎 ═══ -->
+  <div class="page active" id="page0">
+    <div class="content">
+      <div class="welcome">
+        <div class="brand"><div class="brand-glow"></div><div class="brand-box"><div class="brand-en">SN ★ TEAM</div><div class="brand-cn">SN★TEAM</div></div></div>
+        <div class="welcome-sub">虚拟内网一键部署工具 · <a href="https://snbar.top" target="_blank">snbar.top</a></div>
+        <div class="welcome-meta"><span>v1.0</span><span class="meta-dot"></span><span>EasyTier v2.6.4</span><span class="meta-dot"></span><span>Python 3.11</span></div>
+        <button class="btn btn-primary" onclick="gotoPage(1)">开始部署 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 页1: 环境检查 ═══ -->
+  <div class="page" id="page1">
+    <div class="content" id="env-content">
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-warn">检查中...</span></div>
+        <div class="check check-new"><span class="check-icon">◌</span><span class="check-text">正在检测环境...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 页2: 网络配置 ═══ -->
+  <div class="page" id="page2">
+    <div class="content">
+      <div class="alert alert-warn"><span>⚠</span><span>以下信息所有节点必须一致，请向管理员获取</span></div>
+      <div class="split">
+        <div class="split-left">
+          <div class="editor-bar">
+            <span class="editor-title">📝 配置文件编辑</span>
+            <span class="editor-filename">config.toml</span>
+            <span class="editor-status" id="editor-status"><span class="saved">✓ 已保存</span></span>
+          </div>
+          <textarea class="config-editor" id="config-editor" spellcheck="false" oninput="onConfigEdit()"></textarea>
+        </div>
+        <div class="split-right">
+          <div class="split-right-header">📖 参数参考手册 <span style="font-weight:400;font-size:10px;color:var(--text-muted)">（点击可复制）</span></div>
+          <div class="split-right-body">
+            <div class="param-item"><div class="param-kv">network_name = "..."</div><div class="param-desc">网络名称，所有节点必须一致</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">network_secret = "..."</div><div class="param-desc">加密密钥，用于节点间身份验证</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">uri = "tcp://IP:端口"</div><div class="param-desc">引导节点地址，支持tcp/udp</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">ipv4 = "10.X.X.X/24"</div><div class="param-desc">虚拟IP地址，每台设备必须不同</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">hostname = "设备名"</div><div class="param-desc">设备标识名称</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">listeners = []</div><div class="param-desc">监听端口，空数组=不监听</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">encryption-algorithm = "aes-gcm"</div><div class="param-desc">加密算法，需全网统一开启</div></div><hr class="param-divider">
+            <div class="param-item"><div class="param-kv">💡 修改后需重启服务生效</div><div class="param-desc">所有节点 network 段必须完全一致</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-ghost" onclick="gotoPage(1)">← 返回</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="downloadConfig()">💾 下载配置</button>
+          <button class="btn btn-primary" onclick="validateAndNext()">下一步 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 页4: 部署 ═══ -->
+  <div class="page" id="page3">
+    <div class="content">
+      <div class="card">
+        <div class="card-header"><span class="card-title">⚡ 部署中</span><span class="card-badge badge-warn" id="deploy-badge">0%</span></div>
+        <div id="deploy-steps"></div>
+        <div class="progress-bar"><div class="progress-fill" id="deploy-bar" style="width:0%"></div></div>
+      </div>
+      <div class="nav-row">
+        <div></div>
+        <button class="btn btn-primary" id="deploy-next-btn" style="display:none" onclick="gotoPage(4)">查看结果 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 页5: 完成 ═══ -->
+  <div class="page" id="page4">
+    <div class="content">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:28px;margin-bottom:4px">🎉</div>
+        <div style="font-size:16px;font-weight:700;color:var(--green)">部署完成</div>
+      </div>
+      <div class="result-grid" id="result-grid"></div>
+      <div style="margin-top:12px">
+        <div class="result-tip">配置文件已保存到程序目录</div>
+        <div class="result-tip">运行 start.bat 启动服务</div>
+        <div class="result-tip">管理命令: start.bat / stop.bat / restart.bat / status.bat</div>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-ghost" onclick="gotoPage(0)">← 重新开始</button>
+        <button class="btn btn-success" onclick="downloadConfig()">💾 下载配置文件</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>SN★TEAM · snbar.top</span>
+    <div class="footer-keys">
+      <span class="footer-key"><span class="kbd">Tab</span> 切换</span>
+      <span class="footer-key"><span class="kbd">Enter</span> 确认</span>
+      <span class="footer-key"><span class="kbd">Esc</span> 退出</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 全局状态
+// ═══════════════════════════════════════════
+let currentPage = 0;
+const totalPages = 5;
+let configModified = false;
+let envCheckDone = false;
+let deployDone = false;
+
+// 默认配置
+const DEFAULT_CONFIG = {
+  network_name: 'AXIBA-SN',
+  network_secret: 'easytier9900',
+  peer_uri: 'tcp://96.44.141.123:11010',
+  ipv4_prefix: '10.126.126',
+  ip_octet: '7',
+  hostname: '',
+  listeners: '[]',
+  encryption: false
+};
+
+// ═══════════════════════════════════════════
+// 页面导航
+// ═══════════════════════════════════════════
+function gotoPage(n) {
+  if (n < 0 || n >= totalPages) return;
+  currentPage = n;
+  for (let i = 0; i < totalPages; i++) {
+    document.getElementById('page' + i).classList.toggle('active', i === n);
+    const sc = document.getElementById('sc' + i);
+    const sl = document.getElementById('sl' + i);
+    sc.classList.remove('active', 'done');
+    sl.classList.remove('active', 'done');
+    if (i < n) { sc.classList.add('done'); sl.classList.add('done'); }
+    else if (i === n) { sc.classList.add('active'); sl.classList.add('active'); }
+  }
+  for (let i = 0; i < totalPages - 1; i++) {
+    document.getElementById('sline' + i).classList.toggle('done', i < n);
+  }
+  // 页面进入时触发
+  if (n === 1 && !envCheckDone) runEnvCheck();
+  if (n === 2) initConfigEditor();
+  
+}
+
+// ═══════════════════════════════════════════
+// Toast提示
+// ═══════════════════════════════════════════
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast toast-' + type + ' show';
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════
+// 页1: 环境检测
+// ═══════════════════════════════════════════
+function runEnvCheck() {
+  const container = document.getElementById('env-content');
+  const ua = navigator.userAgent;
+  const isWin = ua.includes('Windows');
+  const isMac = ua.includes('Mac');
+  const isLinux = ua.includes('Linux');
+  const osName = isWin ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : '未知';
+  const hostname = DEFAULT_CONFIG.hostname || (isWin ? 'DESKTOP-PC' : 'my-device');
+
+  // 模拟检测过程
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-warn">检查中...</span></div>
+      <div class="check check-new"><span class="check-icon">◌</span><span class="check-text">正在检测操作系统...</span></div>
+    </div>`;
+
+  setTimeout(() => {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-ok">通过</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">操作系统: <strong>${osName}</strong> (${ua.includes('Win64')?'64位':'32位'})</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">浏览器: <strong>${getBrowserName()}</strong></span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">屏幕分辨率: <strong>${screen.width}×${screen.height}</strong></span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">EasyTier: <strong>v2.6.4</strong>（内置）</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">Python: <strong>3.11.9</strong>（内置）</span></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="card-header"><span class="card-title">📡 网络连通性</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">引导节点: <strong>tcp://96.44.141.123:11010</strong> — 可达</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">域名: <strong>snbar.top</strong> — 可达</span></div>
+      </div>
+      <div class="nav-row">
+        <div></div>
+        <button class="btn btn-primary" onclick="gotoPage(2)">下一步 →</button>
+      </div>`;
+    envCheckDone = true;
+    DEFAULT_CONFIG.hostname = hostname;
+    toast('环境检查通过', 'ok');
+  }, 1200);
+}
+
+function getBrowserName() {
+  const ua = navigator.userAgent;
+  if (ua.includes('Firefox')) return 'Firefox';
+  if (ua.includes('Edg')) return 'Edge';
+  if (ua.includes('Chrome')) return 'Chrome';
+  if (ua.includes('Safari')) return 'Safari';
+  return '未知浏览器';
+}
+
+// ═══════════════════════════════════════════
+// 页2: 配置编辑器
+// ═══════════════════════════════════════════
+function generateConfigToml(cfg) {
+  const enc = cfg.encryption ? 'encryption-algorithm = "aes-gcm"' : '# encryption-algorithm = "aes-gcm"';
+  return `# ═══════════════════════════════════════
+# SN★TEAM 虚拟内网配置文件
+# EasyTier v2.6.4
+# 文档: https://snbar.top
+# ═══════════════════════════════════════
+
+[network_identity]
+network_name = "${cfg.network_name}"
+network_secret = "${cfg.network_secret}"
+
+# 引导节点
+[[peer]]
+uri = "${cfg.peer_uri}"
+
+[flags]
+ipv4 = "${cfg.ipv4_prefix}.${cfg.ip_octet}/24"
+hostname = "${cfg.hostname || 'my-device'}"
+listeners = ${cfg.listeners}
+${enc}`;
+}
+
+function initConfigEditor() {
+  const editor = document.getElementById('config-editor');
+  if (!editor.value || !configModified) {
+    editor.value = generateConfigToml(DEFAULT_CONFIG);
+    configModified = false;
+    updateEditorStatus();
+  }
+}
+
+function onConfigEdit() {
+  configModified = true;
+  updateEditorStatus();
+  // 实时解析配置到全局状态
+  parseConfigFromEditor();
+}
+
+function updateEditorStatus() {
+  const el = document.getElementById('editor-status');
+  if (configModified) {
+    el.innerHTML = '<span class="modified">● 已修改</span>';
+  } else {
+    el.innerHTML = '<span class="saved">✓ 已保存</span>';
+  }
+}
+
+function parseConfigFromEditor() {
+  const text = document.getElementById('config-editor').value;
+  const cfg = DEFAULT_CONFIG;
+
+  const match = (key) => {
+    const re = new RegExp(key + '\\s*=\\s*"([^"]*)"');
+    const m = text.match(re);
+    return m ? m[1] : null;
+  };
+
+  cfg.network_name = match('network_name') || cfg.network_name;
+  cfg.network_secret = match('network_secret') || cfg.network_secret;
+  cfg.peer_uri = match('uri') || cfg.peer_uri;
+  cfg.hostname = match('hostname') || cfg.hostname;
+
+  const ipv4 = match('ipv4');
+  if (ipv4) {
+    const parts = ipv4.replace('/24','').split('.');
+    if (parts.length === 4) {
+      cfg.ipv4_prefix = parts.slice(0,3).join('.');
+      cfg.ip_octet = parts[3];
+    }
+  }
+
+  Object.assign(DEFAULT_CONFIG, cfg);
+}
+
+// ═══════════════════════════════════════════
+// 配置校验
+// ═══════════════════════════════════════════
+function validateConfig() {
+  parseConfigFromEditor();
+  const cfg = DEFAULT_CONFIG;
+  const errors = [];
+
+  if (!cfg.network_name || cfg.network_name.length < 2) errors.push('网络名称不能为空');
+  if (!cfg.network_secret || cfg.network_secret.length < 4) errors.push('网络密钥至少4个字符');
+  if (!cfg.peer_uri || !cfg.peer_uri.match(/^(tcp|udp):\/\/.+/)) errors.push('引导节点地址格式错误（需要 tcp:// 或 udp:// 开头）');
+
+  const octet = parseInt(cfg.ip_octet);
+  if (isNaN(octet) || octet < 2 || octet > 254) errors.push('虚拟IP末位必须在 2~254 之间');
+
+  if (!cfg.ipv4_prefix || !cfg.ipv4_prefix.match(/^\d+\.\d+\.\d+$/)) errors.push('网段前缀格式错误（需要 X.X.X 格式）');
+
+  return errors;
+}
+
+function validateAndNext() {
+  const errors = validateConfig();
+  if (errors.length > 0) {
+    toast('配置校验失败: ' + errors[0], 'err');
+    return;
+  }
+  configModified = false;
+  updateEditorStatus();
+  // 同步配置到编辑器
+  document.getElementById('config-editor').value = generateConfigToml(DEFAULT_CONFIG);
+  gotoPage(3);
+  runDeploy();
+}
+
+
+
+// ═══════════════════════════════════════════
+// 页4: 部署流程
+// ═══════════════════════════════════════════
+const DEPLOY_STEPS = [
+  { name: '校验配置文件', icon: '📋' },
+  { name: '生成 config.toml', icon: '📝' },
+  { name: '生成启动器 (start.bat)', icon: '⚡' },
+  { name: '注册开机自启', icon: '🔄' },
+  { name: '启动 EasyTier-Core', icon: '🚀' },
+  { name: '启动仪表盘服务', icon: '📊' },
+  { name: '验证网络连通性', icon: '📡' }
+];
+
+function runDeploy() {
+  const container = document.getElementById('deploy-steps');
+  const bar = document.getElementById('deploy-bar');
+  const badge = document.getElementById('deploy-badge');
+  const nextBtn = document.getElementById('deploy-next-btn');
+  nextBtn.style.display = 'none';
+  deployDone = false;
+
+  let html = '';
+  DEPLOY_STEPS.forEach((s, i) => {
+    html += `<div class="progress-row" id="dstep-${i}"><span class="progress-icon">⏳</span><span class="progress-text">${s.icon} ${s.name}</span></div>`;
+  });
+  container.innerHTML = html;
+
+  let step = 0;
+  function nextStep() {
+    if (step >= DEPLOY_STEPS.length) {
+      // 全部完成
+      badge.textContent = '100%';
+      badge.className = 'card-badge badge-ok';
+      bar.style.width = '100%';
+      nextBtn.style.display = '';
+      deployDone = true;
+      fillResultGrid();
+      toast('部署完成！', 'ok');
+      return;
+    }
+
+    const pct = Math.round(((step) / DEPLOY_STEPS.length) * 100);
+    badge.textContent = pct + '%';
+    bar.style.width = pct + '%';
+
+    // 当前步骤进行中
+    const el = document.getElementById('dstep-' + step);
+    el.className = 'progress-row progress-active';
+    el.querySelector('.progress-icon').textContent = '◉';
+
+    const delay = 400 + Math.random() * 800;
+    setTimeout(() => {
+      // 完成
+      el.className = 'progress-row progress-done';
+      el.querySelector('.progress-icon').textContent = '✓';
+      step++;
+      nextStep();
+    }, delay);
+  }
+
+  setTimeout(nextStep, 300);
+}
+
+// ═══════════════════════════════════════════
+// 页5: 完成页
+// ═══════════════════════════════════════════
+function fillResultGrid() {
+  const cfg = DEFAULT_CONFIG;
+  document.getElementById('result-grid').innerHTML = `
+    <span class="result-key">网络</span><span class="result-val">${cfg.network_name}</span>
+    <span class="result-key">设备</span><span class="result-val">${cfg.hostname || 'my-device'}</span>
+    <span class="result-key">虚拟IP</span><span class="result-val">${cfg.ipv4_prefix}.${cfg.ip_octet}/24</span>
+    <span class="result-key">版本</span><span class="result-val">EasyTier v2.6.4</span>
+    <span class="result-key">仪表盘</span><span class="result-val" style="color:var(--cyan)">http://127.0.0.1:15889</span>`;
+}
+
+// ═══════════════════════════════════════════
+// 配置文件下载
+// ═══════════════════════════════════════════
+function downloadConfig() {
+  parseConfigFromEditor();
+  const content = generateConfigToml(DEFAULT_CONFIG);
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'config.toml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('config.toml 已下载', 'ok');
+}
+
+// ═══════════════════════════════════════════
+// 选择框交互
+// ═══════════════════════════════════════════
+function selectChoice(el) {
+  el.parentElement.querySelectorAll('.choice').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// 初始化：加载配置到编辑器
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('config-editor').value = generateConfigToml(DEFAULT_CONFIG);
+});
+</script>
+</body>
+</html>

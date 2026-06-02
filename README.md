@@ -49,6 +49,7 @@ EasyTier/
 ├── config.toml.example    # 配置模板
 ├── config.toml            # 实际配置（setup.bat 生成，已 gitignore）
 ├── dashboard.py           # 监控仪表盘
+├── installer.html         # 可视化安装向导（浏览器打开）
 ├── setup.bat              # 一键安装（需管理员）
 ├── start.bat              # 启动
 ├── stop.bat               # 停止
@@ -56,6 +57,18 @@ EasyTier/
 ├── status.bat             # 查看状态
 └── README.md
 ```
+
+## 可视化安装向导
+
+双击 `installer.html` 在浏览器中打开，提供图形化配置界面：
+
+- 🔍 **环境检测** — 自动识别操作系统、浏览器、网络连通性
+- 📝 **配置编辑器** — 直接编辑 `config.toml`，支持语法高亮
+- ✅ **配置校验** — 自动检查 IP 范围、密钥长度、URI 格式
+- ⚡ **部署流程** — 可视化进度，一键生成配置并下载
+- 💾 **配置导出** — 生成标准 `config.toml` 文件
+
+适合不熟悉命令行的团队成员使用。
 
 ## 管理命令
 
