@@ -4,149 +4,182 @@ setlocal EnableDelayedExpansion
 
 echo.
 echo  ╔══════════════════════════════════════════╗
-echo  ║   EasyTier 团队部署工具 v1.0             ║
+echo  ║   EasyTier 一键部署包 v1.0               ║
+echo  ║   下载 ─ 配置 ─ 启动 ─ 开机自启          ║
 echo  ╚══════════════════════════════════════════╝
 echo.
 
-:: 获取脚本所在目录（项目根目录）
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
+set "BIN=%ROOT%\bin"
 
 :: ============================================
-:: 1. 检查必要文件
+:: 1. 自动下载 EasyTier
 :: ============================================
-echo [1/7] 检查文件...
-if not exist "%ROOT%\bin\easytier-core.exe" (
-    echo   ✗ 未找到 bin\easytier-core.exe
-    echo   请将 EasyTier 程序文件放入 bin\ 目录
-    echo   下载: https://github.com/EasyTier/EasyTier/releases
+if exist "%BIN%\easytier-core.exe" (
+    echo [1/7] EasyTier 已存在，跳过下载
+    goto :skip_download
+)
+
+echo [1/7] 下载 EasyTier 程序...
+echo.
+
+where powershell >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   ✗ 未找到 PowerShell
+    echo   请手动下载: https://github.com/EasyTier/EasyTier/releases
+    echo   解压后将 *.exe *.dll *.sys 放入 bin\
     pause
     exit /b 1
 )
-if not exist "%ROOT%\config.toml.example" (
-    echo   ✗ 未找到 config.toml.example
+
+:: 获取最新版本
+echo   获取最新版本...
+for /f "tokens=*" %%v in ('powershell -NoProfile -Command "(Invoke-RestMethod -Uri 'https://api.github.com/repos/EasyTier/EasyTier/releases/latest' -UseBasicParsing).tag_name"') do set "VERSION=%%v"
+
+if "%VERSION%"=="" (
+    echo   ⚠ 无法获取版本，使用 v2.6.4
+    set "VERSION=v2.6.4"
+)
+echo   版本: %VERSION!
+
+:: 构造下载URL
+set "ZIP_NAME=easytier-windows-x86_64-%VERSION%.zip"
+set "DOWNLOAD_URL=https://github.com/EasyTier/EasyTier/releases/download/%VERSION%/%ZIP_NAME%"
+set "ZIP_FILE=%ROOT%\%ZIP_NAME%"
+
+:: 创建目录
+mkdir "%BIN%" 2>nul
+
+:: 下载
+echo   下载中... (约30MB，可能需要几分钟)
+echo   %DOWNLOAD_URL%
+echo.
+
+powershell -NoProfile -Command ^
+    "$ProgressPreference='SilentlyContinue';" ^
+    "try{" ^
+    "  Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_FILE%' -UseBasicParsing;" ^
+    "  Write-Host '  下载完成'" ^
+    "}catch{" ^
+    "  Write-Host ('  下载失败: '+$_.Exception.Message);" ^
+    "  exit 1" ^
+    "}"
+
+if %errorlevel% neq 0 (
+    echo.
+    echo   ✗ 下载失败，请手动下载:
+    echo   %DOWNLOAD_URL%
     pause
     exit /b 1
 )
-echo   ✓ 文件检查通过
+
+:: 解压
+echo   解压中...
+set "TEMP_DIR=%ROOT%\_extract"
+mkdir "%TEMP_DIR%" 2>nul
+
+powershell -NoProfile -Command ^
+    "Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%TEMP_DIR%' -Force"
+
+:: 复制所需文件
+echo   安装中...
+set "COUNT=0"
+for /r "%TEMP_DIR%" %%f in (easytier-core.exe easytier-cli.exe Packet.dll WinDivert64.sys wintun.dll) do (
+    if exist "%%f" (
+        copy /y "%%f" "%BIN%\" >nul
+        set /a COUNT+=1
+        echo   ✓ %%~nxf
+    )
+)
+
+:: 清理
+rd /s /q "%TEMP_DIR%" 2>nul
+del /f "%ZIP_FILE%" 2>nul
+
+if exist "%BIN%\easytier-core.exe" (
+    echo.
+    echo   ✓ EasyTier %VERSION% 安装完成 (%COUNT% 个文件)
+) else (
+    echo.
+    echo   ✗ 安装失败
+    pause
+    exit /b 1
+)
+
+:skip_download
 
 :: ============================================
-:: 2. 收集网络配置（机密信息）
+:: 2. 网络配置
 :: ============================================
 echo.
-echo [2/7] 配置网络信息（所有节点必须一致）
+echo [2/7] 网络配置（所有节点一致）
 echo   ───────────────────────────────────
 
-:: 网络名称
 set /p "NET_NAME=  网络名称: "
-if "%NET_NAME%"=="" (
-    echo   ✗ 网络名称不能为空
-    pause
-    exit /b 1
-)
+if "%NET_NAME%"=="" ( echo   ✗ 不能为空 & pause & exit /b 1 )
 
-:: 网络密钥
-set /p "NET_SECRET=  网络密钥: "
-if "%NET_SECRET%"=="" (
-    echo   ✗ 网络密钥不能为空
-    pause
-    exit /b 1
-)
+set /p "NET_SECRET=*** "
+if "%NET_SECRET%"=="" ( echo   ✗ 不能为空 & pause & exit /b 1 )
 
-:: 引导节点
-set /p "SERVER_URI=  引导节点URI [如 tcp://1.2.3.4:11010]: "
-if "%SERVER_URI%"=="" (
-    echo   ✗ 引导节点不能为空
-    pause
-    exit /b 1
-)
+set /p "SERVER_URI=  引导节点 [如 tcp://1.2.3.4:11010]: "
+if "%SERVER_URI%"=="" ( echo   ✗ 不能为空 & pause & exit /b 1 )
 
-:: 网络CIDR前缀
-set /p "CIDR_PREFIX=  网段前缀 [如 192.168.1，默认 10.0.0]: "
+set /p "CIDR_PREFIX=  网段 [默认 10.0.0]: "
 if "%CIDR_PREFIX%"=="" set "CIDR_PREFIX=10.0.0"
 
 :: ============================================
-:: 3. 收集设备配置
+:: 3. 设备配置
 :: ============================================
 echo.
-echo [3/7] 配置设备信息
+echo [3/7] 设备配置
 echo   ───────────────────────────────────
 
-:: 主机名
 set "DEFAULT_HOST=%COMPUTERNAME%"
-set /p "HOSTNAME=  设备名称 [%DEFAULT_HOST%]: "
+set /p "HOSTNAME=  设备名 [%DEFAULT_HOST%]: "
 if "%HOSTNAME%"=="" set "HOSTNAME=%DEFAULT_HOST%"
 
-:: 虚拟IP
-echo.
-echo   可用IP范围: %CIDR_PREFIX%.2 ~ %CIDR_PREFIX%.254
-echo   (%CIDR_PREFIX%.1 通常保留给引导服务器)
-set /p "VIP=  虚拟IP末位 [如输入 5 则为 %CIDR_PREFIX%.5]: "
-if "%VIP%"=="" set "VIP=1"
+echo   IP范围: %CIDR_PREFIX%.2 ~ %CIDR_PREFIX%.254
+set /p "VIP=  IP末位: "
+if "%VIP%"=="" set "VIP=2"
 
 :: ============================================
 :: 4. 检测 Python
 :: ============================================
 echo.
-echo [4/7] 检测 Python 环境...
+echo [4/7] 检测 Python...
 
-set "PYTHON_CMD="
+set "PYTHON_PATH="
+for /f "tokens=*" %%p in ('where python3.11 2^>nul') do if not defined PYTHON_PATH set "PYTHON_PATH=%%p"
+for /f "tokens=*" %%p in ('where python3 2^>nul') do if not defined PYTHON_PATH set "PYTHON_PATH=%%p"
+for /f "tokens=*" %%p in ('where python 2^>nul') do if not defined PYTHON_PATH set "PYTHON_PATH=%%p"
 
-:: 优先检查 python3.11
-where python3.11 >nul 2>&1 && set "PYTHON_CMD=python3.11" && goto :python_found
-:: 检查 python3
-where python3 >nul 2>&1 && set "PYTHON_CMD=python3" && goto :python_found
-:: 检查 python
-where python >nul 2>&1 && set "PYTHON_CMD=python" && goto :python_found
-:: 检查 py launcher
-where py >nul 2>&1 && set "PYTHON_CMD=py -3" && goto :python_found
-
-echo   ⚠ 未检测到 Python，仪表盘功能将不可用
-echo   可稍后手动安装 Python 3.11+ 后重新运行
-set "PYTHON_CMD=python"
-goto :python_done
-
-:python_found
-for /f "tokens=*" %%i in ('%PYTHON_CMD% --version 2^>^&1') do echo   ✓ 检测到 %%i
-
-:python_done
-
-:: 获取 python 完整路径（VBS需要）
-for /f "tokens=*" %%p in ('where %PYTHON_CMD: =.% 2^>nul') do set "PYTHON_PATH=%%p"
 if "%PYTHON_PATH%"=="" (
-    for /f "tokens=*" %%p in ('where python 2^>nul') do set "PYTHON_PATH=%%p"
+    echo   ⚠ 未找到 Python，跳过仪表盘
+    echo   安装 Python 后重新运行可启用: https://python.org
+) else (
+    for /f "tokens=*" %%i in ('"%PYTHON_PATH%" --version 2^>^&1') do echo   ✓ %%i
 )
 
 :: ============================================
-:: 5. 生成配置文件
+:: 5. 生成配置
 :: ============================================
 echo.
-echo [5/7] 生成配置文件...
+echo [5/7] 生成配置...
 
-:: 从模板生成 config.toml
 (
-    echo # EasyTier 节点配置 - 自动生成
-    echo # 生成时间: %date% %time%
-    echo # 设备: %HOSTNAME%
-    echo.
+    echo # 自动生成 - %date% %time%
     echo [network_identity]
     echo network_name = "%NET_NAME%"
     echo network_secret = "%NET_SECRET%"
-    echo.
-    echo # 引导节点
     echo [[peer]]
     echo uri = "%SERVER_URI%"
-    echo.
     echo [flags]
     echo ipv4 = "%CIDR_PREFIX%.%VIP%/24"
     echo hostname = "%HOSTNAME%"
     echo listeners = []
-    echo # encryption-algorithm = "aes-gcm"
 ) > "%ROOT%\config.toml"
-
-echo   ✓ config.toml 已生成
-echo     设备名: %HOSTNAME%
-echo     虚拟IP: %CIDR_PREFIX%.%VIP%/24
+echo   ✓ config.toml
 
 :: ============================================
 :: 6. 生成启动器
@@ -154,103 +187,75 @@ echo     虚拟IP: %CIDR_PREFIX%.%VIP%/24
 echo.
 echo [6/7] 生成启动器...
 
-:: EasyTier Core VBS 启动器（隐藏窗口）
 (
     echo Set WshShell = CreateObject^("WScript.Shell"^)
-    echo WshShell.Run "%ROOT%\bin\easytier-core.exe -c %ROOT%\config.toml", 0, False
+    echo WshShell.Run """%BIN%\easytier-core.exe"" -c ""%ROOT%\config.toml""", 0, False
 ) > "%ROOT%\easytier-core.vbs"
-echo   ✓ easytier-core.vbs
+echo   ✓ Core (静默)
 
-:: Dashboard VBS 启动器（隐藏窗口）
 if not "%PYTHON_PATH%"=="" (
     (
         echo Set WshShell = CreateObject^("WScript.Shell"^)
-        echo WshShell.Run "%PYTHON_PATH% %ROOT%\dashboard.py", 0, False
+        echo WshShell.Run """%PYTHON_PATH%"" ""%ROOT%\dashboard.py""", 0, False
     ) > "%ROOT%\dashboard.vbs"
-    echo   ✓ dashboard.vbs
-) else (
-    echo   ⏭ 跳过 dashboard.vbs（未检测到Python）
+    echo   ✓ Dashboard (静默)
 )
 
 :: ============================================
-:: 7. 注册计划任务（开机自启）
+:: 7. 开机自启 + 启动
 :: ============================================
 echo.
-echo [7/7] 注册计划任务...
+echo [7/7] 开机自启...
 
-:: 检查管理员权限
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo   ⚠ 需要管理员权限注册计划任务
-    echo   请右键「以管理员身份运行」此脚本
-    echo   或手动注册: 以管理员运行 install.bat
-    goto :skip_tasks
+    echo   ⚠ 需管理员权限，右键重新运行
+    goto :start_now
 )
 
-:: EasyTier Core
 schtasks /Delete /TN "EasyTeam-Core" /F >nul 2>&1
+schtasks /Delete /TN "EasyTeam-Dashboard" /F >nul 2>&1
+
 schtasks /Create /TN "EasyTeam-Core" /TR "wscript.exe \"%ROOT%\easytier-core.vbs\"" /SC ONLOGON /RL HIGHEST /F >nul 2>&1
-if %errorlevel%==0 (
-    echo   ✓ EasyTeam-Core 计划任务已注册
-) else (
-    echo   ✗ EasyTeam-Core 注册失败
-)
+echo   ✓ Core 开机自启
 
-:: Dashboard
 if not "%PYTHON_PATH%"=="" (
-    schtasks /Delete /TN "EasyTeam-Dashboard" /F >nul 2>&1
     schtasks /Create /TN "EasyTeam-Dashboard" /TR "wscript.exe \"%ROOT%\dashboard.vbs\"" /SC ONLOGON /RL HIGHEST /F >nul 2>&1
-    if %errorlevel%==0 (
-        echo   ✓ EasyTeam-Dashboard 计划任务已注册
-    ) else (
-        echo   ✗ EasyTeam-Dashboard 注册失败
-    )
+    echo   ✓ Dashboard 开机自启
 )
 
-:skip_tasks
+:start_now
+
+:: 启动服务
+echo.
+echo   启动中...
+wscript.exe "%ROOT%\easytier-core.vbs"
+timeout /t 2 /nobreak >nul
+
+tasklist /FI "IMAGENAME eq easytier-core.exe" 2>nul | findstr /I "easytier" >nul
+if %errorlevel%==0 ( echo   ✓ Core 运行中 ) else ( echo   ✗ Core 启动失败 )
+
+if not "%PYTHON_PATH%"=="" (
+    wscript.exe "%ROOT%\dashboard.vbs"
+    timeout /t 2 /nobreak >nul
+    echo   ✓ Dashboard 运行中
+)
 
 :: ============================================
 :: 完成
 :: ============================================
 echo.
-echo  ╔══════════════════════════════════════════╗
-echo  ║   ✓ 部署完成！                            ║
-echo  ╠══════════════════════════════════════════╣
-echo  ║   网络: %NET_NAME%
-echo  ║   设备: %HOSTNAME%
-echo  ║   虚拟IP: %CIDR_PREFIX%.%VIP%
-echo  ║   仪表盘: http://127.0.0.1:15889
-echo  ║   配置文件: %ROOT%\config.toml
-echo  ╠══════════════════════════════════════════╣
-echo  ║   启动: 运行 start.bat
-echo  ║   停止: 运行 stop.bat
-echo  ║   状态: 运行 status.bat
-echo  ╚══════════════════════════════════════════╝
-echo.
-
-:: 询问是否立即启动
-set /p "START=是否立即启动 EasyTier? (Y/n): "
-if /i "%START%"=="n" goto :end
-
-echo.
-echo 启动中...
-wscript.exe "%ROOT%\easytier-core.vbs"
-timeout /t 2 /nobreak >nul
-
-:: 验证
-tasklist /FI "IMAGENAME eq easytier-core.exe" 2>nul | findstr /I "easytier" >nul
-if %errorlevel%==0 (
-    echo ✓ EasyTier-Core 已启动
-) else (
-    echo ✗ EasyTier-Core 启动失败，请检查日志
-)
-
-if not "%PYTHON_PATH%"=="" (
-    wscript.exe "%ROOT%\dashboard.vbs"
-    timeout /t 2 /nobreak >nul
-    echo ✓ 仪表盘已启动: http://127.0.0.1:15889
-)
-
-:end
+echo  ╔══════════════════════════════════════════════╗
+echo  ║           ✓ 部署完成！                        ║
+echo  ╠══════════════════════════════════════════════╣
+echo  ║  网络:   %NET_NAME%
+echo  ║  设备:   %HOSTNAME%
+echo  ║  虚拟IP: %CIDR_PREFIX%.%VIP%
+echo  ║  仪表盘: http://127.0.0.1:15889
+echo  ╠══════════════════════════════════════════════╣
+echo  ║  · 已静默运行（无弹窗）
+echo  ║  · 已注册开机自启
+echo  ║  · 管理: start/stop/restart/status.bat
+echo  ╚══════════════════════════════════════════════╝
 echo.
 pause

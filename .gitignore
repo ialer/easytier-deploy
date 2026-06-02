@@ -1,17 +1,25 @@
-# 运行时生成的配置（含用户特定参数）
+# 运行时配置（含用户特定参数）
 config.toml
 
 # VBS 启动器（由 setup.bat 生成）
 *.vbs
 
-# EasyTier 二进制文件（用户自行下载放入 bin/）
+# EasyTier 二进制文件（setup.bat 自动下载）
 bin/*.exe
 bin/*.dll
 bin/*.sys
+bin/README.txt
+
+# 打包输出
+release/
 
 # Python 缓存
 __pycache__/
 *.pyc
+
+# 临时文件
+*.zip
+easytier-extract/
 
 # 日志
 *.log
