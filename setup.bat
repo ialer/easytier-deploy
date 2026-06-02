@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 
 echo.
 echo  ╔══════════════════════════════════════════╗
-echo  ║   EasyTier 一键部署包 v1.0               ║
+echo  ║   EasyTier 一键部署包 v1.1.0               ║
 echo  ║   下载 ─ 配置 ─ 启动 ─ 开机自启          ║
 echo  ╚══════════════════════════════════════════╝
 echo.
