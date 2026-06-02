@@ -4,17 +4,17 @@
 
 [network_identity]
 # 网络名称 — 所有节点必须相同
-network_name = "AXIBA-SN"
+network_name = "YOUR_NETWORK_NAME"
 # 网络密钥 — 所有节点必须相同
-network_secret = "easytier9900"
+network_secret = "YOUR_NETWORK_SECRET"
 
 # 引导节点（公共服务器或自建）
 [[peer]]
-uri = "tcp://96.44.141.123:11010"
+uri = "tcp://YOUR_SERVER_IP:11010"
 
 [flags]
-# 虚拟IP — 每台设备必须不同，格式: 10.126.126.X/24
-ipv4 = "10.126.126.1/24"
+# 虚拟IP — 每台设备必须不同，格式: 10.X.X.X/24
+ipv4 = "10.0.0.1/24"
 # 主机名 — 设备标识，建议用设备名
 hostname = "my-device"
 # 监听端口 — 留空表示不监听（仅主动连接）

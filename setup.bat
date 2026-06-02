@@ -5,7 +5,6 @@ setlocal EnableDelayedExpansion
 echo.
 echo  ╔══════════════════════════════════════════╗
 echo  ║   EasyTier 团队部署工具 v1.0             ║
-echo  ║   AXIBA-SN 虚拟网络                      ║
 echo  ╚══════════════════════════════════════════╝
 echo.
 
@@ -16,7 +15,7 @@ set "ROOT=%ROOT:~0,-1%"
 :: ============================================
 :: 1. 检查必要文件
 :: ============================================
-echo [1/6] 检查文件...
+echo [1/7] 检查文件...
 if not exist "%ROOT%\bin\easytier-core.exe" (
     echo   ✗ 未找到 bin\easytier-core.exe
     echo   请将 EasyTier 程序文件放入 bin\ 目录
@@ -32,10 +31,45 @@ if not exist "%ROOT%\config.toml.example" (
 echo   ✓ 文件检查通过
 
 :: ============================================
-:: 2. 收集配置信息
+:: 2. 收集网络配置（机密信息）
 :: ============================================
 echo.
-echo [2/6] 配置节点信息
+echo [2/7] 配置网络信息（所有节点必须一致）
+echo   ───────────────────────────────────
+
+:: 网络名称
+set /p "NET_NAME=  网络名称: "
+if "%NET_NAME%"=="" (
+    echo   ✗ 网络名称不能为空
+    pause
+    exit /b 1
+)
+
+:: 网络密钥
+set /p "NET_SECRET=  网络密钥: "
+if "%NET_SECRET%"=="" (
+    echo   ✗ 网络密钥不能为空
+    pause
+    exit /b 1
+)
+
+:: 引导节点
+set /p "SERVER_URI=  引导节点URI [如 tcp://1.2.3.4:11010]: "
+if "%SERVER_URI%"=="" (
+    echo   ✗ 引导节点不能为空
+    pause
+    exit /b 1
+)
+
+:: 网络CIDR前缀
+set /p "CIDR_PREFIX=  网段前缀 [如 192.168.1，默认 10.0.0]: "
+if "%CIDR_PREFIX%"=="" set "CIDR_PREFIX=10.0.0"
+
+:: ============================================
+:: 3. 收集设备配置
+:: ============================================
+echo.
+echo [3/7] 配置设备信息
 echo   ───────────────────────────────────
 
 :: 主机名
@@ -45,20 +79,20 @@ if "%HOSTNAME%"=="" set "HOSTNAME=%DEFAULT_HOST%"
 
 :: 虚拟IP
 echo.
-echo   可用IP范围: 10.126.126.2 ~ 10.126.126.254
-echo   (10.126.126.1 保留给引导服务器)
-set /p "VIP=  虚拟IP末位 [如输入 5 则为 10.126.126.5]: "
+echo   可用IP范围: %CIDR_PREFIX%.2 ~ %CIDR_PREFIX%.254
+echo   (%CIDR_PREFIX%.1 通常保留给引导服务器)
+set /p "VIP=  虚拟IP末位 [如输入 5 则为 %CIDR_PREFIX%.5]: "
 if "%VIP%"=="" set "VIP=1"
 
 :: ============================================
-:: 3. 检测 Python
+:: 4. 检测 Python
 :: ============================================
 echo.
-echo [3/6] 检测 Python 环境...
+echo [4/7] 检测 Python 环境...
 
 set "PYTHON_CMD="
 
-:: 优先检查 python3.11（项目指定版本）
+:: 优先检查 python3.11
 where python3.11 >nul 2>&1 && set "PYTHON_CMD=python3.11" && goto :python_found
 :: 检查 python3
 where python3 >nul 2>&1 && set "PYTHON_CMD=python3" && goto :python_found
@@ -84,10 +118,10 @@ if "%PYTHON_PATH%"=="" (
 )
 
 :: ============================================
-:: 4. 生成配置文件
+:: 5. 生成配置文件
 :: ============================================
 echo.
-echo [4/6] 生成配置文件...
+echo [5/7] 生成配置文件...
 
 :: 从模板生成 config.toml
 (
@@ -96,15 +130,15 @@ echo [4/6] 生成配置文件...
     echo # 设备: %HOSTNAME%
     echo.
     echo [network_identity]
-    echo network_name = "AXIBA-SN"
-    echo network_secret = "easytier9900"
+    echo network_name = "%NET_NAME%"
+    echo network_secret = "%NET_SECRET%"
     echo.
     echo # 引导节点
     echo [[peer]]
-    echo uri = "tcp://96.44.141.123:11010"
+    echo uri = "%SERVER_URI%"
     echo.
     echo [flags]
-    echo ipv4 = "10.126.126.%VIP%/24"
+    echo ipv4 = "%CIDR_PREFIX%.%VIP%/24"
     echo hostname = "%HOSTNAME%"
     echo listeners = []
     echo # encryption-algorithm = "aes-gcm"
@@ -112,13 +146,13 @@ echo [4/6] 生成配置文件...
 
 echo   ✓ config.toml 已生成
 echo     设备名: %HOSTNAME%
-echo     虚拟IP: 10.126.126.%VIP%/24
+echo     虚拟IP: %CIDR_PREFIX%.%VIP%/24
 
 :: ============================================
-:: 5. 生成启动器
+:: 6. 生成启动器
 :: ============================================
 echo.
-echo [5/6] 生成启动器...
+echo [6/7] 生成启动器...
 
 :: EasyTier Core VBS 启动器（隐藏窗口）
 (
@@ -139,10 +173,10 @@ if not "%PYTHON_PATH%"=="" (
 )
 
 :: ============================================
-:: 6. 注册计划任务（开机自启）
+:: 7. 注册计划任务（开机自启）
 :: ============================================
 echo.
-echo [6/6] 注册计划任务...
+echo [7/7] 注册计划任务...
 
 :: 检查管理员权限
 net session >nul 2>&1
@@ -182,8 +216,9 @@ echo.
 echo  ╔══════════════════════════════════════════╗
 echo  ║   ✓ 部署完成！                            ║
 echo  ╠══════════════════════════════════════════╣
+echo  ║   网络: %NET_NAME%
 echo  ║   设备: %HOSTNAME%
-echo  ║   虚拟IP: 10.126.126.%VIP%
+echo  ║   虚拟IP: %CIDR_PREFIX%.%VIP%
 echo  ║   仪表盘: http://127.0.0.1:15889
 echo  ║   配置文件: %ROOT%\config.toml
 echo  ╠══════════════════════════════════════════╣
