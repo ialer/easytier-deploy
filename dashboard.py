@@ -361,7 +361,7 @@ startRefresh();
 
 function openCfg(){
   stopRefresh();
-  fetch('/api/config').then(function(r){return r.text()}).then(function(t){
+  fetch('/api/config',{headers:{'X-Auth-Token':_apiToken}}).then(function(r){return r.text()}).then(function(t){
     document.getElementById('cfgText').value=t;
     document.getElementById('cfgModal').classList.add('show');
     document.getElementById('cfgText').focus();
@@ -373,7 +373,7 @@ function closeCfg(){
 }
 function saveCfg(){
   var txt=document.getElementById('cfgText').value;
-  fetch('/api/config',{method:'POST',body:txt}).then(function(r){return r.text()}).then(function(t){
+  fetch('/api/config',{method:'POST',body:txt,headers:{'X-Auth-Token':_apiToken}}).then(function(r){return r.text()}).then(function(t){
     alert(t);closeCfg();
   }).catch(function(){alert('保存失败')});
 }
@@ -485,7 +485,7 @@ def render():
     }
 
     return HTML.safe_substitute(
-        net_name=net_name, hostname=hostname,
+        api_token=AUTH_TOKEN, net_name=net_name, hostname=hostname,
         refresh=REFRESH, timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
         total=total, p2p_count=p2p, relay_count=relay,
         total_rx=stats.get("total_rx", "-"), total_tx=stats.get("total_tx", "-"),

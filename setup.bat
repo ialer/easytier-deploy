@@ -96,7 +96,11 @@ mkdir "%DL_DIR%" 2>nul
 powershell -NoProfile -Command "Expand-Archive -Path '%DL_FILE%' -DestinationPath '%DL_DIR%' -Force"
 
 :: 停止当前服务
-taskkill /F /IM easytier-core.exe >nul 2>&1
+:: 只停止本目录下的进程
+for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq easytier-core.exe" /FO CSV /NH 2^>nul ^| findstr /I "easytier-core"') do (
+    set "PID=%%~p"
+    wmic process where "ProcessId=!PID!" get CommandLine 2>nul | findstr /I "%BIN%" >nul 2>&1 && taskkill /F /PID !PID! >nul 2>&1
+)
 
 :: 替换文件
 for /r "%DL_DIR%" %%f in (easytier-core.exe easytier-cli.exe Packet.dll WinDivert64.sys wintun.dll) do (
