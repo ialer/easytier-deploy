@@ -1,0 +1,23 @@
+# EasyTier 节点配置模板
+# 复制此文件为 config.toml 并修改以下参数
+# 文档: https://easytier.cn
+
+[network_identity]
+# 网络名称 — 所有节点必须相同
+network_name = "YOUR_NETWORK_NAME"
+# 网络密钥 — 所有节点必须相同
+network_secret = "YOUR_NETWORK_SECRET"
+
+# 引导节点（公共服务器或自建）
+[[peer]]
+uri = "tcp://YOUR_SERVER_IP:11010"
+
+[flags]
+# 虚拟IP — 每台设备必须不同，格式: 10.X.X.X/24
+ipv4 = "10.0.0.1/24"
+# 主机名 — 设备标识，建议用设备名
+hostname = "my-device"
+# 监听端口 — 留空表示不监听（仅主动连接）
+listeners = []
+# 加密算法 — 取消注释启用（需全网统一）
+# encryption-algorithm = "aes-gcm"
