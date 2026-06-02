@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """EasyTier 虚拟网络监控面板 v4 - 通用版"""
-import subprocess, time, http.server, os, pathlib, json, re
+import subprocess, time, http.server, os, pathlib, json, re, html as html_mod, secrets, hashlib
 from string import Template
 from collections import defaultdict
 
@@ -9,6 +9,16 @@ CLI = str(_here / "bin" / "easytier-cli.exe")
 CONFIG_TOML = str(_here / "config.toml")
 PORT = 15889
 REFRESH = 8
+AUTH_TOKEN = secrets.token_hex(16)  # Generate random token on each start
+
+def _check_auth(handler):
+    """Check API auth via query param or header"""
+    token = handler.headers.get("X-Auth-Token", "")
+    if not token:
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(handler.path).query)
+        token = qs.get("token", [""])[0]
+    return token == AUTH_TOKEN
 HISTORY_MAX = 60
 
 _latency_history = defaultdict(list)
@@ -23,7 +33,7 @@ def get_network_name():
                 m = re.match(r'network_name\s*=\s*"(.+)"', line.strip())
                 if m:
                     return m.group(1)
-    except:
+    except Exception:
         pass
     return "EasyTier"
 
@@ -434,23 +444,25 @@ def render():
             tag, cls = '<span class="tag tag-p2p">P2P</span>', ''
         else:
             tag, cls = '<span class="tag tag-relay">中继</span>', ''
+        def esc(s):
+            return html_mod.escape(str(s), quote=True)
         rows.append(
-            f'<tr{cls}><td class="ip" onclick="copyTxt(this)">{p["ipv4"]}</td>'
-            f'<td class="host">{p["hostname"]}</td><td>{tag}</td>'
-            f'<td class="nc">{p["latency"]}</td><td class="nc">{p["loss"]}</td>'
-            f'<td class="nc">{p["rx"]}</td><td class="nc">{p["tx"]}</td>'
-            f'<td>{p["tunnel"]}</td><td>{nat_cn}</td>'
-            f'<td class="vr">{p["version"]}</td></tr>'
+            f'<tr{cls}><td class="ip" onclick="copyTxt(this)">{esc(p["ipv4"])}</td>'
+            f'<td class="host">{esc(p["hostname"])}</td><td>{tag}</td>'
+            f'<td class="nc">{esc(p["latency"])}</td><td class="nc">{esc(p["loss"])}</td>'
+            f'<td class="nc">{esc(p["rx"])}</td><td class="nc">{esc(p["tx"])}</td>'
+            f'<td>{esc(p["tunnel"])}</td><td>{esc(nat_cn)}</td>'
+            f'<td class="vr">{esc(p["version"])}</td></tr>'
         )
 
     rrows = [
-        f'<tr><td class="ip">{r["cidr"]}</td><td>{r["hostname"]}</td>'
-        f'<td>{r["hop"]}</td><td class="nc">{r["cost"]}</td></tr>'
+        f'<tr><td class="ip">{html_mod.escape(str(r["cidr"]))}</td><td>{html_mod.escape(str(r["hostname"]))}</td>'
+        f'<td>{html_mod.escape(str(r["hop"]))}</td><td class="nc">{html_mod.escape(str(r["cost"]))}</td></tr>'
         for r in routes
     ]
 
     listeners_html = "".join(
-        f'<span class="listener">{l}</span>' for l in node.get("listeners", [])
+        f'<span class="listener">{html_mod.escape(str(l))}</span>' for l in node.get("listeners", [])
     )
 
     comp_ratio = "-"
@@ -459,7 +471,7 @@ def render():
         ra = float(stats.get("comp_rx_after", "0 B").split()[0])
         if ra > 0:
             comp_ratio = f"{(1 - rb / ra) * 100:.1f}%"
-    except:
+    except Exception:
         pass
 
     topo_data = [
@@ -498,8 +510,19 @@ def render():
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def _send_json(self, code, data):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+
     def do_GET(self):
-        if self.path == "/api/config":
+        if self.path.startswith("/api/config"):
+            if not _check_auth(self):
+                self.send_response(403)
+                self.end_headers()
+                self.wfile.write(b"Forbidden: invalid token")
+                return
             try:
                 with open(CONFIG_TOML, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -507,10 +530,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "text/plain; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(content.encode("utf-8"))
-            except:
+            except FileNotFoundError:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b"Config file not found")
+            except Exception as e:
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(b"Cannot read config")
+                self.wfile.write(f"Cannot read config: {e}".encode("utf-8"))
         else:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -518,10 +545,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(render().encode("utf-8"))
 
     def do_POST(self):
-        if self.path == "/api/config":
+        if self.path.startswith("/api/config"):
+            if not _check_auth(self):
+                self.send_response(403)
+                self.end_headers()
+                self.wfile.write(b"Forbidden: invalid token")
+                return
             try:
                 length = int(self.headers.get("Content-Length", 0))
+                if length > 100_000:  # 100KB limit
+                    self.send_response(413)
+                    self.end_headers()
+                    self.wfile.write(b"Payload too large")
+                    return
                 body = self.rfile.read(length).decode("utf-8")
+                # Validate TOML basics
+                if "[network_identity]" not in body and "[flags]" not in body:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Invalid config: missing required sections")
+                    return
                 with open(CONFIG_TOML, "w", encoding="utf-8") as f:
                     f.write(body)
                 self.send_response(200)
@@ -534,10 +577,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(f"保存失败: {e}".encode("utf-8"))
 
     def log_message(self, fmt, *args):
-        pass
+        # Log to stderr for debugging (not suppressed)
+        import sys
+        print(f"[{time.strftime('%H:%M:%S')}] {fmt % args}", file=sys.stderr)
 
 
 if __name__ == "__main__":
     os.chdir(_here)
-    print(f"Dashboard v4: http://0.0.0.0:{PORT}", flush=True)
-    http.server.HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    print(f"Dashboard v4: http://127.0.0.1:{PORT}", flush=True)
+    print(f"API Token: {AUTH_TOKEN}  (use in X-Auth-Token header or ?token= param)", flush=True)
+    http.server.HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

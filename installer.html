@@ -278,10 +278,10 @@ let deployDone = false;
 
 // 默认配置
 const DEFAULT_CONFIG = {
-  network_name: 'AXIBA-SN',
-  network_secret: 'easytier9900',
-  peer_uri: 'tcp://96.44.141.123:11010',
-  ipv4_prefix: '10.126.126',
+  network_name: 'YOUR_NETWORK_NAME',
+  network_secret: 'YOUR_SECRET',
+  peer_uri: 'tcp://YOUR_SERVER_IP:11010',
+  ipv4_prefix: '10.0.0',
   ip_octet: '7',
   hostname: '',
   listeners: '[]',
@@ -345,9 +345,9 @@ function runEnvCheck() {
     container.innerHTML = `
       <div class="card">
         <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-ok">通过</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">操作系统: <strong>${osName}</strong> (${ua.includes('Win64')?'64位':'32位'})</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">浏览器: <strong>${getBrowserName()}</strong></span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">屏幕分辨率: <strong>${screen.width}×${screen.height}</strong></span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">操作系统: <strong>${escapeHtml(osName)}</strong> (${ua.includes('Win64')?'64位':'32位'})</span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">浏览器: <strong>${escapeHtml(getBrowserName())}</strong></span></div>
+        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">屏幕分辨率: <strong>${escapeHtml(screen.width+'×'+screen.height)}</strong></span></div>
         <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">EasyTier: <strong>v2.6.4</strong>（内置）</span></div>
         <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">Python: <strong>3.11.9</strong>（内置）</span></div>
       </div>
@@ -589,6 +589,13 @@ function downloadConfig() {
 function selectChoice(el) {
   el.parentElement.querySelectorAll('.choice').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
+}
+
+// HTML转义防XSS
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // 初始化：加载配置到编辑器
