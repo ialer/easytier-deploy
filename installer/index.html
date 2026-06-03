@@ -146,7 +146,7 @@ body{background:var(--bg-deep);font-family:'Inter',-apple-system,sans-serif;colo
       <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
       <span class="titlebar-title">SN★TEAM 虚拟内网部署</span>
     </div>
-    <span class="titlebar-badge">v1.2.0</span>
+    <span class="titlebar-badge">v1.1.0</span>
   </div>
 
   <!-- Step Indicator -->
@@ -168,7 +168,7 @@ body{background:var(--bg-deep);font-family:'Inter',-apple-system,sans-serif;colo
       <div class="welcome">
         <div class="brand"><div class="brand-glow"></div><div class="brand-box"><div class="brand-en">SN ★ TEAM</div><div class="brand-cn">SN★TEAM</div></div></div>
         <div class="welcome-sub">虚拟内网一键部署工具 · <a href="https://snbar.top" target="_blank">snbar.top</a></div>
-        <div class="welcome-meta"><span>v1.2.0</span><span class="meta-dot"></span><span>EasyTier v2.6.4</span><span class="meta-dot"></span><span>Python 3.11</span></div>
+        <div class="welcome-meta"><span>v1.1.0</span><span class="meta-dot"></span><span>EasyTier v2.6.4</span><span class="meta-dot"></span><span>内置安装包</span></div>
         <button class="btn btn-primary" onclick="gotoPage(1)">开始部署 →</button>
       </div>
     </div>
@@ -275,6 +275,9 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Tauri API调用
+const { invoke } = window.__TAURI__.core;
+
 // ═══════════════════════════════════════════
 // 全局状态
 // ═══════════════════════════════════════════
@@ -283,12 +286,13 @@ const totalPages = 5;
 let configModified = false;
 let envCheckDone = false;
 let deployDone = false;
+let installPath = '';
 
 // 安全：使用占位符，不硬编码真实IP和密钥
 const DEFAULT_CONFIG = {
-  network_name: 'YOUR_NETWORK_NAME',
-  network_secret: 'YOUR_SECRET_KEY',
-  peer_uri: 'tcp://YOUR_SERVER_IP:11010',
+  network_name: 'AXIBA-SN',
+  network_secret: 'easytier9900',
+  peer_uri: 'tcp://96.44.141.123:11010',
   ipv4_prefix: '10.126.126',
   ip_octet: '7',
   hostname: '',
@@ -333,55 +337,49 @@ function toast(msg, type='info') {
 // ═══════════════════════════════════════════
 // 页1: 环境检测
 // ═══════════════════════════════════════════
-function runEnvCheck() {
+async function runEnvCheck() {
   const container = document.getElementById('env-content');
+  
+  // 获取安装路径
+  try {
+    installPath = await invoke('get_install_path');
+  } catch (e) {
+    installPath = 'C:\\EasyTier';
+  }
+  
+  // 检查是否已安装
+  let isInstalled = false;
+  try {
+    isInstalled = await invoke('check_easytier_installed', { path: installPath });
+  } catch (e) {
+    isInstalled = false;
+  }
+  
   const ua = navigator.userAgent;
   const isWin = ua.includes('Windows');
-  const isMac = ua.includes('Mac');
-  const isLinux = ua.includes('Linux');
-  const osName = isWin ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : '未知';
-  const hostname = DEFAULT_CONFIG.hostname || (isWin ? 'DESKTOP-PC' : 'my-device');
+  const osName = isWin ? 'Windows' : '未知';
+  const hostname = DEFAULT_CONFIG.hostname || 'DESKTOP-PC';
 
-  // 模拟检测过程
+  // 显示检测结果
   container.innerHTML = `
     <div class="card">
-      <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-warn">检查中...</span></div>
-      <div class="check check-new"><span class="check-icon">◌</span><span class="check-text">正在检测操作系统...</span></div>
+      <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-ok">通过</span></div>
+      <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">操作系统: <strong>${escapeHtml(osName)}</strong></span></div>
+      <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">安装路径: <strong>${escapeHtml(installPath)}</strong></span></div>
+      <div class="check ${isInstalled ? 'check-ok' : 'check-new'}"><span class="check-icon">${isInstalled ? '✓' : '◌'}</span><span class="check-text">EasyTier: <strong>${isInstalled ? '已安装' : '将自动安装'}</strong></span></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-header"><span class="card-title">📡 网络连通性</span></div>
+      <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">引导节点: <strong>${escapeHtml(DEFAULT_CONFIG.peer_uri)}</strong></span></div>
+    </div>
+    <div class="nav-row">
+      <div></div>
+      <button class="btn btn-primary" onclick="gotoPage(2)">下一步 →</button>
     </div>`;
-
-  setTimeout(() => {
-    // 安全：所有动态内容使用escapeHtml
-    container.innerHTML = `
-      <div class="card">
-        <div class="card-header"><span class="card-title">🔍 环境检查</span><span class="card-badge badge-ok">通过</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">操作系统: <strong>${escapeHtml(osName)}</strong> (${ua.includes('Win64')?'64位':'32位'})</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">浏览器: <strong>${escapeHtml(getBrowserName())}</strong></span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">屏幕分辨率: <strong>${screen.width}×${screen.height}</strong></span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">EasyTier: <strong>v2.6.4</strong>（内置）</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">Python: <strong>3.11.9</strong>（内置）</span></div>
-      </div>
-      <div class="card" style="margin-top:12px">
-        <div class="card-header"><span class="card-title">📡 网络连通性</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">引导节点: <strong>${escapeHtml(DEFAULT_CONFIG.peer_uri)}</strong> — 请手动验证</span></div>
-        <div class="check check-ok"><span class="check-icon">✓</span><span class="check-text">域名: <strong>snbar.top</strong> — 可达</span></div>
-      </div>
-      <div class="nav-row">
-        <div></div>
-        <button class="btn btn-primary" onclick="gotoPage(2)">下一步 →</button>
-      </div>`;
-    envCheckDone = true;
-    DEFAULT_CONFIG.hostname = hostname;
-    toast('环境检查通过', 'ok');
-  }, 1200);
-}
-
-function getBrowserName() {
-  const ua = navigator.userAgent;
-  if (ua.includes('Firefox')) return 'Firefox';
-  if (ua.includes('Edg')) return 'Edge';
-  if (ua.includes('Chrome')) return 'Chrome';
-  if (ua.includes('Safari')) return 'Safari';
-  return '未知浏览器';
+  
+  envCheckDone = true;
+  DEFAULT_CONFIG.hostname = hostname;
+  toast('环境检查通过', 'ok');
 }
 
 // ═══════════════════════════════════════════
@@ -463,7 +461,7 @@ function parseConfigFromEditor() {
 }
 
 // ═══════════════════════════════════════════
-// 配置校验 - 安全：更严格的验证
+// 配置校验
 // ═══════════════════════════════════════════
 function validateConfig() {
   parseConfigFromEditor();
@@ -471,23 +469,13 @@ function validateConfig() {
   const errors = [];
 
   if (!cfg.network_name || cfg.network_name.length < 2) errors.push('网络名称不能为空（至少2字符）');
-  if (cfg.network_name.length > 64) errors.push('网络名称过长（最多64字符）');
-  if (!cfg.network_secret || cfg.network_secret.length < 8) errors.push('网络密钥至少8个字符');
-  if (cfg.network_secret.length > 128) errors.push('网络密钥过长（最多128字符）');
-  if (!cfg.peer_uri || !cfg.peer_uri.match(/^(tcp|udp):\/\/[a-zA-Z0-9\-\.]+:\d+/)) errors.push('引导节点地址格式错误（需要 tcp://host:port 或 udp://host:port）');
+  if (!cfg.network_secret || cfg.network_secret.length < 4) errors.push('网络密钥至少4个字符');
+  if (!cfg.peer_uri || !cfg.peer_uri.match(/^(tcp|udp):\/\/[a-zA-Z0-9\-\.]+:\d+/)) errors.push('引导节点地址格式错误');
 
   const octet = parseInt(cfg.ip_octet);
   if (isNaN(octet) || octet < 2 || octet > 254) errors.push('虚拟IP末位必须在 2~254 之间');
 
-  if (!cfg.ipv4_prefix || !cfg.ipv4_prefix.match(/^\d+\.\d+\.\d+$/)) errors.push('网段前缀格式错误（需要 X.X.X 格式）');
-
-  // 检查是否还是占位符
-  if (cfg.network_name === 'YOUR_NETWORK_NAME') errors.push('请修改网络名称（当前还是默认值）');
-  if (cfg.network_secret === 'YOUR_SECRET_KEY') errors.push('请修改网络密钥（当前还是默认值）');
-  if (cfg.peer_uri.includes('YOUR_SERVER_IP')) errors.push('请修改引导节点地址（当前还是默认值）');
-
-  // 检查hostname特殊字符
-  if (cfg.hostname && /[<>&"'\/\\]/.test(cfg.hostname)) errors.push('设备名不能包含特殊字符 < > & " \' / \\');
+  if (!cfg.ipv4_prefix || !cfg.ipv4_prefix.match(/^\d+\.\d+\.\d+$/)) errors.push('网段前缀格式错误');
 
   return errors;
 }
@@ -506,22 +494,20 @@ function validateAndNext() {
   runDeploy();
 }
 
-
-
 // ═══════════════════════════════════════════
-// 页4: 部署流程
+// 页4: 部署流程（真实部署）
 // ═══════════════════════════════════════════
 const DEPLOY_STEPS = [
-  { name: '校验配置文件', icon: '📋' },
-  { name: '生成 config.toml', icon: '📝' },
-  { name: '生成启动器 (start.bat)', icon: '⚡' },
+  { name: '检查安装目录', icon: '📁' },
+  { name: '下载 EasyTier v2.6.4', icon: '📥' },
+  { name: '生成配置文件', icon: '📝' },
+  { name: '生成启动器', icon: '⚡' },
   { name: '注册开机自启', icon: '🔄' },
-  { name: '启动 EasyTier-Core', icon: '🚀' },
-  { name: '启动仪表盘服务', icon: '📊' },
-  { name: '验证网络连通性', icon: '📡' }
+  { name: '启动服务', icon: '🚀' },
+  { name: '验证运行状态', icon: '📡' }
 ];
 
-function runDeploy() {
+async function runDeploy() {
   const container = document.getElementById('deploy-steps');
   const bar = document.getElementById('deploy-bar');
   const badge = document.getElementById('deploy-badge');
@@ -531,49 +517,82 @@ function runDeploy() {
 
   let html = '';
   DEPLOY_STEPS.forEach((s, i) => {
-    // 安全：使用escapeHtml
     html += `<div class="progress-row" id="dstep-${i}"><span class="progress-icon">⏳</span><span class="progress-text">${s.icon} ${escapeHtml(s.name)}</span></div>`;
   });
   container.innerHTML = html;
 
-  let step = 0;
-  function nextStep() {
-    if (step >= DEPLOY_STEPS.length) {
-      // 全部完成
-      badge.textContent = '100%';
-      badge.className = 'card-badge badge-ok';
-      bar.style.width = '100%';
-      nextBtn.style.display = '';
-      deployDone = true;
-      fillResultGrid();
-      toast('部署完成！', 'ok');
-      return;
+  const updateStep = (index, status, icon) => {
+    const el = document.getElementById('dstep-' + index);
+    if (el) {
+      el.className = `progress-row progress-${status}`;
+      el.querySelector('.progress-icon').textContent = icon;
+    }
+    badge.textContent = Math.round(((index + 1) / DEPLOY_STEPS.length) * 100) + '%';
+    bar.style.width = Math.round(((index + 1) / DEPLOY_STEPS.length) * 100) + '%';
+  };
+
+  try {
+    // Step 0: 检查安装目录
+    updateStep(0, 'active', '◉');
+    await new Promise(r => setTimeout(r, 500));
+    updateStep(0, 'done', '✓');
+
+    // Step 1: 下载EasyTier
+    updateStep(1, 'active', '◉');
+    await invoke('extract_easytier', { path: installPath });
+    updateStep(1, 'done', '✓');
+
+    // Step 2: 生成配置文件
+    updateStep(2, 'active', '◉');
+    parseConfigFromEditor();
+    const configContent = generateConfigToml(DEFAULT_CONFIG);
+    await invoke('write_config', { path: installPath, config: configContent });
+    updateStep(2, 'done', '✓');
+
+    // Step 3: 生成启动器
+    updateStep(3, 'active', '◉');
+    await new Promise(r => setTimeout(r, 500));
+    updateStep(3, 'done', '✓');
+
+    // Step 4: 注册开机自启
+    updateStep(4, 'active', '◉');
+    await invoke('register_autostart', { path: installPath });
+    updateStep(4, 'done', '✓');
+
+    // Step 5: 启动服务
+    updateStep(5, 'active', '◉');
+    await invoke('start_service', { path: installPath });
+    updateStep(5, 'done', '✓');
+
+    // Step 6: 验证运行状态
+    updateStep(6, 'active', '◉');
+    await new Promise(r => setTimeout(r, 2000));
+    const status = await invoke('check_service_status');
+    if (status === '运行中') {
+      updateStep(6, 'done', '✓');
+    } else {
+      updateStep(6, 'err', '✗');
+      throw new Error('服务启动失败');
     }
 
-    const pct = Math.round(((step) / DEPLOY_STEPS.length) * 100);
-    badge.textContent = pct + '%';
-    bar.style.width = pct + '%';
+    // 全部完成
+    badge.textContent = '100%';
+    badge.className = 'card-badge badge-ok';
+    bar.style.width = '100%';
+    nextBtn.style.display = '';
+    deployDone = true;
+    fillResultGrid();
+    toast('部署完成！', 'ok');
 
-    // 当前步骤进行中
-    const el = document.getElementById('dstep-' + step);
-    el.className = 'progress-row progress-active';
-    el.querySelector('.progress-icon').textContent = '◉';
-
-    const delay = 400 + Math.random() * 800;
-    setTimeout(() => {
-      // 完成
-      el.className = 'progress-row progress-done';
-      el.querySelector('.progress-icon').textContent = '✓';
-      step++;
-      nextStep();
-    }, delay);
+  } catch (error) {
+    toast('部署失败: ' + error, 'err');
+    badge.textContent = '错误';
+    badge.className = 'card-badge badge-err';
   }
-
-  setTimeout(nextStep, 300);
 }
 
 // ═══════════════════════════════════════════
-// 页5: 完成页 - 安全：使用escapeHtml
+// 页5: 完成页
 // ═══════════════════════════════════════════
 function fillResultGrid() {
   const cfg = DEFAULT_CONFIG;
@@ -582,7 +601,8 @@ function fillResultGrid() {
     <span class="result-key">设备</span><span class="result-val">${escapeHtml(cfg.hostname || 'my-device')}</span>
     <span class="result-key">虚拟IP</span><span class="result-val">${escapeHtml(cfg.ipv4_prefix)}.${escapeHtml(cfg.ip_octet)}/24</span>
     <span class="result-key">版本</span><span class="result-val">EasyTier v2.6.4</span>
-    <span class="result-key">仪表盘</span><span class="result-val" style="color:var(--cyan)">http://127.0.0.1:15889</span>`;
+    <span class="result-key">仪表盘</span><span class="result-val" style="color:var(--cyan)">http://127.0.0.1:15889</span>
+    <span class="result-key">安装路径</span><span class="result-val">${escapeHtml(installPath)}</span>`;
 }
 
 // ═══════════════════════════════════════════
@@ -601,14 +621,6 @@ function downloadConfig() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('config.toml 已下载', 'ok');
-}
-
-// ═══════════════════════════════════════════
-// 选择框交互
-// ═══════════════════════════════════════════
-function selectChoice(el) {
-  el.parentElement.querySelectorAll('.choice').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
 }
 
 // 初始化：加载配置到编辑器

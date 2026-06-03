@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EasyTier 虚拟网络监控面板 v5.1 - 安全加固版"""
+"""EasyTier 虚拟网络监控面板 v5.2 - 安全加固版"""
 import subprocess, time, http.server, os, pathlib, json, re, html as html_mod, secrets, sys
 from string import Template
 from collections import defaultdict
@@ -599,7 +599,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(_here)
-    _log(f"Dashboard v5.1 启动: http://127.0.0.1:{PORT}")
+    _log(f"Dashboard v5.2 启动: http://127.0.0.1:{PORT}")
     _log(f"API Token: {AUTH_TOKEN}")
     # 安全：绑定127.0.0.1，不是0.0.0.0
     http.server.HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
