@@ -5,6 +5,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -48,18 +51,27 @@ jobs:
         if: runner.os == 'Windows'
         run: python build.py
 
+      - name: Rename binary
+        shell: bash
+        run: |
+          cd dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            mv et-deploy.exe "${{ matrix.artifact }}"
+          else
+            mv et-deploy "${{ matrix.artifact }}"
+            chmod +x "${{ matrix.artifact }}"
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/et-deploy*
+          path: dist/${{ matrix.artifact }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
 
     steps:
       - name: Download all artifacts
@@ -67,6 +79,9 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
