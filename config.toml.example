@@ -1,5 +1,5 @@
 # EasyTier 节点配置模板
-# 复制此文件为 config.toml 并修改以下参数
+# 复制此文件为 config.toml 或通过 et-deploy install 自动生成
 # 文档: https://easytier.cn
 
 [network_identity]
@@ -13,9 +13,9 @@ network_secret = "YOUR_NETWORK_SECRET"
 uri = "tcp://YOUR_SERVER_IP:11010"
 
 [flags]
-# 虚拟IP — 每台设备必须不同，格式: 10.X.X.X/24
+# 虚拟IP — 每台设备必须不同，格式: X.X.X.X/24
 ipv4 = "10.0.0.1/24"
-# 主机名 — 设备标识，建议用设备名
+# 主机名 — 设备标识
 hostname = "my-device"
 # 监听端口 — 留空表示不监听（仅主动连接）
 listeners = []

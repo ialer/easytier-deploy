@@ -1,30 +1,14 @@
-# 运行时配置（含用户特定参数）
+# 运行时生成
 config.toml
+bin/
+logs/
+*.pid
 
-# VBS 启动器（由 setup.bat 生成）
-*.vbs
-
-# EasyTier 二进制文件（setup.bat 自动下载）
-bin/*.exe
-bin/*.dll
-bin/*.sys
-bin/README.txt
-
-# 打包输出
-release/
-
-# Python 缓存
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
-# 临时文件
-*.zip
-easytier-extract/
-
-# 日志
-*.log
-
-# 系统文件
-Thumbs.db
-Desktop.ini
+# OS
 .DS_Store
+Thumbs.db

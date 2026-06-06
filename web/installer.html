@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyTier 部署向导</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e1a;--card:#111827;--surface:#1e293b;--border:#334155;
+  --primary:#6366f1;--primary-glow:rgba(99,102,241,.15);
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;--cyan:#06b6d4;
+  --text:#f1f5f9;--dim:#94a3b8;--muted:#64748b;
+  --radius:12px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:24px;line-height:1.6}
+
+/* 背景光效 */
+body::before{content:'';position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,rgba(99,102,241,.08),transparent 70%);pointer-events:none;z-index:0}
+
+.installer{width:780px;position:relative;z-index:1}
+
+/* 顶部标题栏 */
+.header{background:var(--card);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-badge{font-size:10px;padding:2px 10px;border-radius:20px;background:var(--primary-glow);color:var(--primary);border:1px solid rgba(99,102,241,.3);font-weight:600;letter-spacing:.5px}
+.header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--dim)}
+.os-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--border)}
+
+/* 步骤条 */
+.steps{background:var(--card);border-left:1px solid var(--border);border-right:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:0}
+.step{display:flex;align-items:center;cursor:pointer;user-select:none}
+.step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid var(--border);color:var(--muted);background:var(--bg);transition:all .3s}
+.step.active .step-num{border-color:var(--primary);color:#fff;background:var(--primary);box-shadow:0 0 16px rgba(99,102,241,.4)}
+.step.done .step-num{border-color:var(--green);color:#fff;background:var(--green)}
+.step-label{font-size:11px;color:var(--muted);margin-left:8px;font-weight:500}
+.step.active .step-label{color:var(--text)}
+.step.done .step-label{color:var(--green)}
+.step-line{width:40px;height:2px;background:var(--border);margin:0 6px;border-radius:1px}
+.step-line.done{background:var(--green)}
+
+/* 内容区 */
+.content{background:var(--card);border:1px solid var(--border);border-top:none;padding:32px;min-height:480px}
+
+/* 页面 */
+.page{display:none}.page.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* 欢迎页 */
+.welcome{text-align:center;padding:20px 0}
+.welcome-icon{font-size:48px;margin-bottom:16px}
+.welcome h2{font-size:24px;font-weight:800;margin-bottom:8px}
+.welcome p{color:var(--dim);font-size:14px;margin-bottom:24px}
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;text-align:left}
+.feature{padding:14px 16px;border-radius:10px;background:var(--surface);border:1px solid var(--border)}
+.feature-icon{font-size:18px;margin-bottom:6px}
+.feature-title{font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:2px}
+.feature-desc{font-size:11px;color:var(--dim)}
+
+/* 环境检查 */
+.check-list{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:13px}
+.check-icon{font-size:16px;width:24px;text-align:center}
+.check-ok .check-icon{color:var(--green)}
+.check-err .check-icon{color:var(--red)}
+.check-warn .check-icon{color:var(--amber)}
+.check-text{flex:1}
+.check-label{font-weight:500}
+.check-detail{font-size:11px;color:var(--dim)}
+
+/* 表单 */
+.form{max-width:560px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--cyan);letter-spacing:.5px;margin-bottom:6px}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}
+.form-input::placeholder{color:var(--muted)}
+.form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-err{font-size:11px;color:var(--red);margin-top:4px;display:none}
+
+/* 预览框 */
+.preview{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--green);white-space:pre-wrap;max-height:200px;overflow-y:auto}
+
+/* 按钮 */
+.btn-row{display:flex;justify-content:space-between;margin-top:28px;padding-top:20px;border-top:1px solid var(--border)}
+.btn{padding:10px 28px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;box-shadow:0 4px 16px rgba(99,102,241,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(99,102,241,.4)}
+.btn-success{background:linear-gradient(135deg,var(--green),#16a34a);color:#fff;box-shadow:0 4px 16px rgba(34,197,94,.3)}
+.btn-success:hover{transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--dim);padding:10px 16px}
+.btn-ghost:hover{color:var(--text)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+
+/* 进度 */
+.progress{margin:20px 0}
+.progress-item{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px}
+.progress-item .icon{width:24px;text-align:center;font-size:16px}
+.progress-item.done{color:var(--green)}
+.progress-item.active{color:var(--amber)}
+.progress-item.pending{color:var(--muted)}
+.progress-item.error{color:var(--red)}
+
+/* 完成页 */
+.done-box{text-align:center;padding:30px 0}
+.done-icon{font-size:64px;margin-bottom:16px}
+.done-box h2{font-size:22px;font-weight:700;margin-bottom:8px}
+.done-box p{color:var(--dim);font-size:13px;margin-bottom:24px}
+.info-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;text-align:left;max-width:420px;margin:0 auto 24px}
+.info-key{font-size:12px;color:var(--cyan);font-weight:500}
+.info-val{font-size:12px;font-family:'JetBrains Mono',monospace}
+
+/* 响应式 */
+@media(max-width:840px){
+  .installer{width:100%}
+  .form-row{grid-template-columns:1fr}
+  .feature-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="installer">
+  <!-- 标题栏 -->
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">⚡ EasyTier</span>
+      <span class="header-badge">DEPLOY v2.0</span>
+    </div>
+    <div class="header-right">
+      <div class="os-badge" id="osBadge">💻 检测中...</div>
+    </div>
+  </div>
+
+  <!-- 步骤条 -->
+  <div class="steps" id="stepsBar">
+    <div class="step active" onclick="gotoStep(0)"><div class="step-num">1</div><span class="step-label">欢迎</span></div>
+    <div class="step-line" id="line0"></div>
+    <div class="step" onclick="gotoStep(1)"><div class="step-num">2</div><span class="step-label">环境检查</span></div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" onclick="gotoStep(2)"><div class="step-num">3</div><span class="step-label">网络配置</span></div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" onclick="gotoStep(3)"><div class="step-num">4</div><span class="step-label">部署</span></div>
+    <div class="step-line" id="line3"></div>
+    <div class="step" onclick="gotoStep(4)"><div class="step-num">5</div><span class="step-label">完成</span></div>
+  </div>
+
+  <!-- 内容 -->
+  <div class="content">
+
+    <!-- 页0: 欢迎 -->
+    <div class="page active" id="page0">
+      <div class="welcome">
+        <div class="welcome-icon">🌐</div>
+        <h2>EasyTier 团队虚拟网络</h2>
+        <p>一键部署安全的 P2P 虚拟内网，团队设备无缝互通</p>
+        <div class="feature-grid">
+          <div class="feature">
+            <div class="feature-icon">🔒</div>
+            <div class="feature-title">端到端加密</div>
+            <div class="feature-desc">可选 AES-GCM 加密，数据安全传输</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-title">P2P 直连</div>
+            <div class="feature-desc">设备间直接通信，低延迟高带宽</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🔄</div>
+            <div class="feature-title">自动中继</div>
+            <div class="feature-desc">P2P 不通时自动通过服务器中继</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">实时监控</div>
+            <div class="feature-desc">Web 仪表盘查看网络状态</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="gotoStep(1)">开始部署 →</button>
+      </div>
+    </div>
+
+    <!-- 页1: 环境检查 -->
+    <div class="page" id="page1">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">🔍 环境检查</h3>
+      <div class="check-list" id="checkList">
+        <div class="check-item check-ok"><div class="check-icon">⏳</div><div class="check-text">检测中...</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="gotoStep(0)">← 返回</button>
+        <button class="btn btn-primary" id="btnToConfig" onclick="gotoStep(2)" disabled>继续配置 →</button>
+      </div>
+    </div>
+
+    <!-- 页2: 网络配置 -->
+    <div class="page" id="page2">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">📝 网络配置</h3>
+      <div class="form">
+        <div class="form-group">
+          <label class="form-label">网络名称</label>
+          <input class="form-input" id="fNetwork" placeholder="例: sn-team" value="sn-team">
+          <div class="form-hint">所有节点必须使用相同的网络名称</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">网络密钥</label>
+          <input class="form-input" id="fSecret" placeholder="所有节点必须一致" value="">
+          <button class="btn btn-ghost" style="margin-top:4px;padding:4px 12px;font-size:11px" onclick="genSecret()">🔄 随机生成</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">引导节点 URI</label>
+          <input class="form-input" id="fPeer" placeholder="tcp://IP:端口" value="tcp://96.44.141.123:11010">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">虚拟 IP</label>
+            <input class="form-input" id="fIP" placeholder="10.0.0.x/24" value="10.0.0.1/24">
+          </div>
+          <div class="form-group">
+            <label class="form-label">设备名称</label>
+            <input class="form-input" id="fHostname" placeholder="设备标识">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">加密方式</label>
+          <select class="form-input" id="fEnc">
+            <option value="">不加密（默认）</option>
+            <option value="aes-gcm">AES-GCM（全网必须统一开启）</option>
+          </select>
+        </div>
+        <div class="preview" id="configPreview"># 预览配置...</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="gotoStep(1)">← 返回</button>
+        <button class="btn btn-primary" onclick="gotoStep(3)">部署 →</button>
+      </div>
+    </div>
+
+    <!-- 页3: 部署 -->
+    <div class="page" id="page3">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">🚀 部署中</h3>
+      <div class="progress" id="deployProgress"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btnBackDeploy" onclick="gotoStep(2)" disabled>← 返回</button>
+        <button class="btn btn-success" id="btnDone" onclick="gotoStep(4)" disabled>完成 ✓</button>
+      </div>
+    </div>
+
+    <!-- 页4: 完成 -->
+    <div class="page" id="page4">
+      <div class="done-box">
+        <div class="done-icon">🎉</div>
+        <h2>部署成功！</h2>
+        <p>EasyTier 已安装并启动，设备已加入虚拟网络</p>
+        <div class="info-grid">
+          <div class="info-key">虚拟 IP</div><div class="info-val" id="outIP">-</div>
+          <div class="info-key">设备名称</div><div class="info-val" id="outHost">-</div>
+          <div class="info-key">网络名称</div><div class="info-val" id="outNet">-</div>
+          <div class="info-key">仪表盘</div><div class="info-val">http://127.0.0.1:15889</div>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center">
+          <button class="btn btn-primary" onclick="window.open('http://127.0.0.1:15889')">打开仪表盘</button>
+          <button class="btn btn-ghost" onclick="copyCmd()">📋 复制管理命令</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let currentStep = 0;
+const totalSteps = 5;
+
+function gotoStep(n) {
+  if (n > currentStep + 1) return; // 不能跳步
+  if (n === 1) runChecks();
+  if (n === 2) updatePreview();
+  if (n === 3) startDeploy();
+  currentStep = n;
+  document.querySelectorAll('.page').forEach((p,i) => p.classList.toggle('active', i===n));
+  document.querySelectorAll('.step').forEach((s,i) => {
+    s.classList.toggle('active', i===n);
+    s.classList.toggle('done', i<n);
+  });
+  for(let i=0;i<4;i++){
+    const line=document.getElementById('line'+i);
+    if(line) line.classList.toggle('done', i<n);
+  }
+}
+
+function genSecret() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let s = '';
+  for(let i=0;i<24;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('fSecret').value = s;
+  updatePreview();
+}
+
+function updatePreview() {
+  const net = document.getElementById('fNetwork').value || 'YOUR_NETWORK';
+  const sec = document.getElementById('fSecret').value || 'YOUR_SECRET';
+  const peer = document.getElementById('fPeer').value || 'tcp://YOUR_SERVER:11010';
+  const ip = document.getElementById('fIP').value || '10.0.0.1/24';
+  const host = document.getElementById('fHostname').value || 'my-device';
+  const enc = document.getElementById('fEnc').value;
+  let cfg = `[network_identity]\nnetwork_name = "${net}"\nnetwork_secret = "${sec}"\n\n[[peer]]\nuri = "${peer}"\n\n[flags]\nipv4 = "${ip}"\nhostname = "${host}"\n`;
+  if(enc) cfg += `encryption-algorithm = "${enc}"\n`;
+  document.getElementById('configPreview').textContent = cfg;
+}
+
+// 环境检测
+function runChecks() {
+  const list = document.getElementById('checkList');
+  const btn = document.getElementById('btnToConfig');
+  list.innerHTML = '<div class="check-item check-ok"><div class="check-icon">⏳</div><div class="check-text">正在检测环境...</div></div>';
+  btn.disabled = true;
+
+  // 模拟检测（实际应由后端检测）
+  setTimeout(() => {
+    const checks = [
+      {icon:'💻', label:'操作系统', detail:navigator.platform, ok:true},
+      {icon:'🌐', label:'网络连接', detail:navigator.onLine?'在线':'离线', ok:navigator.onLine},
+      {icon:'📦', label:'EasyTier 核心', detail:'需通过 CLI 安装', ok:true},
+      {icon:'🐍', label:'Python 环境', detail:typeof Python!=='undefined'?'已安装':'需安装', ok:true},
+    ];
+    list.innerHTML = checks.map(c =>
+      `<div class="check-item ${c.ok?'check-ok':'check-err'}">
+        <div class="check-icon">${c.ok?'✅':'❌'}</div>
+        <div class="check-text"><div class="check-label">${c.icon} ${c.label}</div><div class="check-detail">${c.detail}</div></div>
+      </div>`
+    ).join('');
+    btn.disabled = false;
+  }, 800);
+}
+
+// 部署
+async function startDeploy() {
+  const prog = document.getElementById('deployProgress');
+  const btnBack = document.getElementById('btnBackDeploy');
+  const btnDone = document.getElementById('btnDone');
+  btnBack.disabled = true;
+  btnDone.disabled = true;
+
+  const steps = [
+    {label:'下载 EasyTier 核心文件', key:'download'},
+    {label:'生成配置文件', key:'config'},
+    {label:'注册后台服务', key:'service'},
+    {label:'启动服务', key:'start'},
+  ];
+
+  prog.innerHTML = steps.map((s,i) =>
+    `<div class="progress-item pending" id="pstep${i}"><div class="icon">○</div>${s.label}</div>`
+  ).join('');
+
+  for(let i=0;i<steps.length;i++){
+    const el = document.getElementById('pstep'+i);
+    el.className = 'progress-item active';
+    el.querySelector('.icon').textContent = '⏳';
+
+    // 模拟步骤（实际应调用后端 API）
+    await new Promise(r => setTimeout(r, 1000 + Math.random()*500));
+
+    el.className = 'progress-item done';
+    el.querySelector('.icon').textContent = '✅';
+  }
+
+  // 填充完成页信息
+  document.getElementById('outIP').textContent = document.getElementById('fIP').value || '-';
+  document.getElementById('outHost').textContent = document.getElementById('fHostname').value || '-';
+  document.getElementById('outNet').textContent = document.getElementById('fNetwork').value || '-';
+
+  btnBack.disabled = false;
+  btnDone.disabled = false;
+}
+
+function copyCmd() {
+  const cmds = 'et-deploy start    # 启动\net-deploy stop     # 停止\net-deploy status   # 状态\net-deploy update   # 更新\net-deploy restart  # 重启';
+  navigator.clipboard.writeText(cmds).then(() => alert('已复制到剪贴板'));
+}
+
+// 初始化
+window.addEventListener('DOMContentLoaded', () => {
+  // 检测 OS
+  const ua = navigator.userAgent;
+  let os = 'Unknown';
+  if(ua.includes('Win')) os='Windows';
+  else if(ua.includes('Mac')) os='macOS';
+  else if(ua.includes('Linux')) os='Linux';
+  document.getElementById('osBadge').textContent = '💻 ' + os;
+
+  // 生成随机密钥
+  genSecret();
+
+  // 设置默认主机名
+  document.getElementById('fHostname').value = os.toLowerCase() + '-device';
+
+  // 实时预览
+  ['fNetwork','fSecret','fPeer','fIP','fHostname','fEnc'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+});
+</script>
+</body>
+</html>

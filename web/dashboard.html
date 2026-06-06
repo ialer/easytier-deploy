@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyTier 监控仪表盘</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e1a;--card:#111827;--surface:#1e293b;--border:#334155;--primary:#6366f1;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--cyan:#06b6d4;--text:#f1f5f9;--dim:#94a3b8;--muted:#64748b}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;padding:20px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.topbar h1{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge{padding:4px 12px;border-radius:8px;font-size:11px;font-weight:600;border:1px solid}
+.badge-green{background:rgba(34,197,94,.1);color:var(--green);border-color:rgba(34,197,94,.2)}
+.badge-amber{background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)}
+.refresh-btn{padding:6px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--dim);font-size:11px;cursor:pointer;transition:all .2s}
+.refresh-btn:hover{border-color:var(--primary);color:var(--text)}
+
+.grid{display:grid;gap:16px}
+.grid-top{grid-template-columns:repeat(4,1fr)}
+.grid-main{grid-template-columns:1fr 1fr}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card-title{font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase}
+
+.stat-val{font-size:28px;font-weight:800}
+.stat-label{font-size:11px;color:var(--dim);margin-top:2px}
+.stat-green{color:var(--green)}.stat-amber{color:var(--amber)}.stat-cyan{color:var(--cyan)}
+
+.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.info-row:last-child{border:none}
+.info-key{color:var(--dim)}.info-val{font-family:'JetBrains Mono',monospace}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 10px;color:var(--dim);font-weight:600;border-bottom:1px solid var(--border);font-size:11px}
+td{padding:8px 10px;border-bottom:1px solid rgba(51,65,85,.3)}
+tr:hover td{background:rgba(99,102,241,.03)}
+
+.empty{text-align:center;padding:30px;color:var(--muted);font-size:13px}
+
+.footer{text-align:center;margin-top:20px;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚡ EasyTier 监控</h1>
+  <div class="topbar-right">
+    <span class="badge" id="statusBadge">检测中...</span>
+    <button class="refresh-btn" onclick="refresh()">🔄 刷新</button>
+  </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="grid grid-top" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-title">在线节点</div>
+    <div class="stat-val stat-cyan" id="sPeers">-</div>
+    <div class="stat-label">P2P 直连设备</div>
+  </div>
+  <div class="card">
+    <div class="card-title">虚拟 IP</div>
+    <div class="stat-val stat-green" id="sVIP" style="font-size:18px">-</div>
+    <div class="stat-label" id="sHostname">-</div>
+  </div>
+  <div class="card">
+    <div class="card-title">NAT 类型</div>
+    <div class="stat-val stat-amber" id="sNAT" style="font-size:16px">-</div>
+    <div class="stat-label" id="sPublicIP">-</div>
+  </div>
+  <div class="card">
+    <div class="card-title">公网 IPv4</div>
+    <div class="stat-val" id="sPubV4" style="font-size:16px;color:var(--text)">-</div>
+    <div class="stat-label">Peer ID: <span id="sPeerID">-</span></div>
+  </div>
+</div>
+
+<!-- 主内容 -->
+<div class="grid grid-main">
+  <!-- 对等节点 -->
+  <div class="card">
+    <div class="card-title">📋 对等节点</div>
+    <div id="peerTable"><div class="empty">加载中...</div></div>
+  </div>
+
+  <!-- 节点信息 -->
+  <div class="card">
+    <div class="card-title">💻 本机信息</div>
+    <div id="nodeInfo"><div class="empty">加载中...</div></div>
+  </div>
+
+  <!-- 路由表 -->
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-title">🗺️ 路由表</div>
+    <div id="routeTable"><div class="empty">加载中...</div></div>
+  </div>
+</div>
+
+<div class="footer">EasyTier Deploy Dashboard v2.0 · 自动刷新 8s</div>
+
+<script>
+async function fetchJSON(url) {
+  try { return await (await fetch(url)).json(); }
+  catch { return null; }
+}
+
+async function refresh() {
+  const [peers, node, routes] = await Promise.all([
+    fetchJSON('/api/peers'),
+    fetchJSON('/api/node'),
+    fetchJSON('/api/routes')
+  ]);
+
+  // 状态
+  const badge = document.getElementById('statusBadge');
+  if (peers && peers.peers) {
+    badge.className = 'badge badge-green';
+    badge.textContent = '🟢 在线';
+  } else {
+    badge.className = 'badge badge-amber';
+    badge.textContent = '🔴 离线';
+  }
+
+  // 统计
+  document.getElementById('sPeers').textContent = peers?.count ?? '-';
+  document.getElementById('sVIP').textContent = node?.vip ?? '-';
+  document.getElementById('sHostname').textContent = node?.hostname ?? '-';
+  document.getElementById('sNAT').textContent = node?.nat_type ?? '-';
+  document.getElementById('sPublicIP').textContent = node?.pub_v4 ? '公网: ' + node.pub_v4 : '';
+  document.getElementById('sPubV4').textContent = node?.pub_v4 ?? '-';
+  document.getElementById('sPeerID').textContent = node?.peer_id ?? '-';
+
+  // 节点表
+  const pt = document.getElementById('peerTable');
+  if (peers?.peers?.length) {
+    pt.innerHTML = `<table><tr><th>虚拟IP</th><th>主机名</th><th>延迟</th><th>丢包</th><th>隧道</th><th>NAT</th></tr>
+    ${peers.peers.map(p => `<tr><td>${p.ipv4}</td><td>${p.hostname}</td><td>${p.latency}</td><td>${p.loss}</td><td>${p.tunnel}</td><td>${p.nat}</td></tr>`).join('')}</table>`;
+  } else {
+    pt.innerHTML = '<div class="empty">暂无对等节点</div>';
+  }
+
+  // 节点信息
+  const ni = document.getElementById('nodeInfo');
+  if (node && Object.keys(node).length) {
+    ni.innerHTML = Object.entries(node).map(([k,v]) =>
+      `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
+    ).join('');
+  }
+
+  // 路由表
+  const rt = document.getElementById('routeTable');
+  if (routes?.routes?.length) {
+    rt.innerHTML = `<table><tr><th>CIDR</th><th>主机名</th><th>跳数</th></tr>
+    ${routes.routes.map(r => `<tr><td>${r.cidr}</td><td>${r.hostname}</td><td>${r.hop}</td></tr>`).join('')}</table>`;
+  } else {
+    rt.innerHTML = '<div class="empty">暂无路由</div>';
+  }
+}
+
+refresh();
+setInterval(refresh, 8000);
+</script>
+</body>
+</html>
