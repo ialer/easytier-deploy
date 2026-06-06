@@ -8,13 +8,18 @@ from pathlib import Path
 GITHUB_API = "https://api.github.com/repos/EasyTier/EasyTier/releases"
 GITHUB_RELEASES = "https://github.com/EasyTier/EasyTier/releases"
 
-# 平台映射
+# 平台映射（EasyTier release 资产命名格式）
 PLATFORM_MAP = {
-    "linux-x86_64":  "x86_64-unknown-linux-gnu",
-    "linux-aarch64": "aarch64-unknown-linux-gnu",
-    "darwin-x86_64": "x86_64-apple-darwin",
-    "darwin-arm64":  "aarch64-apple-darwin",
-    "win32-amd64":   "x86_64-pc-windows-msvc",
+    "linux-x86_64":  "linux-x86_64",
+    "linux-aarch64": "linux-aarch64",
+    "linux-armv7":   "linux-armv7",
+    "linux-arm":     "linux-arm",
+    "linux-mips":    "linux-mips",
+    "linux-riscv64": "linux-riscv64",
+    "darwin-x86_64": "macos-x86_64",
+    "darwin-arm64":  "macos-aarch64",
+    "win32-amd64":   "windows-x86_64",
+    "win32-arm64":   "windows-arm64",
 }
 
 NEED_FILES = {
@@ -71,9 +76,8 @@ def get_download_url(version, platform_key):
         print(f"  ✗ 不支持的平台: {platform_key}")
         return None
 
-    is_win = platform_key.startswith("win32")
-    ext = ".zip" if is_win else ".tar.gz"
-    filename = f"easytier-{version}-{et_platform}{ext}"
+    # EasyTier 所有平台统一用 .zip 格式
+    filename = f"easytier-{et_platform}-v{version}.zip"
     return f"{GITHUB_RELEASES}/download/v{version}/{filename}"
 
 
@@ -106,27 +110,17 @@ def download_file(url, dest):
 
 def extract_archive(archive_path, platform_key):
     """解压下载的文件到 bin/"""
-    is_win = platform_key.startswith("win32")
     BIN_DIR.mkdir(parents=True, exist_ok=True)
 
-    if is_win:
-        with zipfile.ZipFile(archive_path, "r") as zf:
-            for name in zf.namelist():
-                basename = os.path.basename(name)
-                if basename and any(basename.startswith(p) for p in ["easytier-core", "easytier-cli"]):
-                    print(f"  📦 解压: {basename}")
-                    with zf.open(name) as src, open(BIN_DIR / basename, "wb") as dst:
-                        dst.write(src.read())
-    else:
-        import tarfile
-        with tarfile.open(archive_path, "r:gz" if archive_path.endswith(".tar.gz") else "r:*") as tf:
-            for member in tf.getmembers():
-                basename = os.path.basename(member.name)
-                if basename and any(basename.startswith(p) for p in ["easytier-core", "easytier-cli"]):
-                    print(f"  📦 解压: {basename}")
-                    member.name = basename
-                    tf.extract(member, str(BIN_DIR))
-                    # 确保有执行权限
+    with zipfile.ZipFile(archive_path, "r") as zf:
+        for name in zf.namelist():
+            basename = os.path.basename(name)
+            if basename and any(basename.startswith(p) for p in ["easytier-core", "easytier-cli"]):
+                print(f"  📦 解压: {basename}")
+                with zf.open(name) as src, open(BIN_DIR / basename, "wb") as dst:
+                    dst.write(src.read())
+                # Linux/macOS 设置执行权限
+                if not platform_key.startswith("win32"):
                     os.chmod(BIN_DIR / basename, 0o755)
 
 
@@ -156,9 +150,7 @@ def download_core(version=None, force=False):
 
     # 下载到临时文件
     import tempfile
-    is_win = platform_key.startswith("win32")
-    suffix = ".zip" if is_win else ".tar.gz"
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     tmp.close()
 
     try:
