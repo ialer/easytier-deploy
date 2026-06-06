@@ -27,7 +27,7 @@ def _core_cmd():
     suffix = ".exe" if IS_WINDOWS else ""
     core = BIN_DIR / f"easytier-core{suffix}"
     if not core.exists():
-        print(f"  ✗ 核心文件不存在: {core}")
+        print(f"  核心文件不存在: {core}")
         print("  请运行: et-deploy update")
         sys.exit(1)
     return str(core)
@@ -78,7 +78,7 @@ def _linux_install():
     unit.write_text(_linux_unit_content())
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "--user", "enable", SERVICE_NAME], check=True)
-    print(f"  ✓ systemd 用户服务已注册: {unit}")
+    print(f"  systemd 用户服务已注册: {unit}")
 
 
 def _linux_start():
@@ -145,7 +145,7 @@ def _mac_install():
     plist = _mac_plist_path()
     plist.parent.mkdir(parents=True, exist_ok=True)
     plist.write_text(_mac_plist_content())
-    print(f"  ✓ launchd agent 已注册: {plist}")
+    print(f"  launchd agent 已注册: {plist}")
 
 
 def _mac_start():
@@ -194,14 +194,14 @@ def _win_install():
     # 注册核心服务
     r = subprocess.run(_win_task_core(), shell=True, capture_output=True, text=True)
     if r.returncode != 0:
-        print(f"  ⚠ 注册核心服务: {r.stderr.strip()}")
+        print(f"  注册核心服务: {r.stderr.strip()}")
     else:
-        print(f"  ✓ 核心服务已注册 (计划任务: {SERVICE_NAME})")
+        print(f"  核心服务已注册 (计划任务: {SERVICE_NAME})")
 
     # 注册仪表盘服务
     r = subprocess.run(_win_task_dashboard(), shell=True, capture_output=True, text=True)
     if r.returncode == 0:
-        print(f"  ✓ 仪表盘服务已注册 (计划任务: {SERVICE_NAME}-dashboard)")
+        print(f"  仪表盘服务已注册 (计划任务: {SERVICE_NAME}-dashboard)")
 
 
 def _win_start():
@@ -236,16 +236,16 @@ def _platform_fn(name):
     prefix = "linux" if IS_LINUX else ("mac" if IS_MACOS else "win")
     fn = globals().get(f"_{prefix}_{name}")
     if not fn:
-        print(f"  ✗ 不支持的平台: {platform.system()}")
+        print(f"  不支持的平台: {platform.system()}")
         sys.exit(1)
     return fn
 
 
 def service_install():
     """注册后台服务"""
-    print("\n⚙️  注册后台服务...")
+    print("\n 注册后台服务...")
     _platform_fn("install")()
-    print(f"  ✓ 服务已注册，开机自启")
+    print(f"  服务已注册，开机自启")
 
 
 def service_start():
@@ -253,42 +253,42 @@ def service_start():
     from .downloader import ensure_core
     ensure_core()
     if not CONFIG_FILE.exists():
-        print("  ✗ 配置文件不存在，请先运行: et-deploy install")
+        print("  配置文件不存在，请先运行: et-deploy install")
         sys.exit(1)
-    print("\n🚀 启动 EasyTier...")
+    print("\n启动 EasyTier...")
     try:
         _platform_fn("start")()
         time.sleep(2)
         if service_status():
-            print("  ✓ 服务已启动")
+            print("  服务已启动")
         else:
-            print("  ⚠ 服务启动中，请稍后检查状态")
+            print("  服务启动中，请稍后检查状态")
     except subprocess.CalledProcessError as e:
-        print(f"  ✗ 启动失败: {e}")
+        print(f"  启动失败: {e}")
 
 
 def service_stop():
     """停止服务"""
-    print("\n🛑 停止 EasyTier...")
+    print("\n停止 EasyTier...")
     try:
         _platform_fn("stop")()
-        print("  ✓ 服务已停止")
+        print("  服务已停止")
     except Exception as e:
-        print(f"  ⚠ 停止时出错: {e}")
+        print(f"  停止时出错: {e}")
 
 
 def service_restart():
     """重启服务"""
-    print("\n🔄 重启 EasyTier...")
+    print("\n重启 EasyTier...")
     try:
         _platform_fn("restart")()
         time.sleep(2)
         if service_status():
-            print("  ✓ 服务已重启")
+            print("  服务已重启")
         else:
-            print("  ⚠ 重启中，请稍后检查状态")
+            print("  重启中，请稍后检查状态")
     except Exception as e:
-        print(f"  ✗ 重启失败: {e}")
+        print(f"  重启失败: {e}")
 
 
 def service_status():
@@ -298,10 +298,10 @@ def service_status():
 
 def service_uninstall():
     """卸载服务"""
-    print("\n🗑️  卸载服务...")
+    print("\n 卸载服务...")
     service_stop()
     _platform_fn("uninstall")()
-    print("  ✓ 服务已卸载")
+    print("  服务已卸载")
 
 
 def print_status():
@@ -321,7 +321,7 @@ def print_status():
 
     # 服务状态
     running = service_status()
-    print(f"\n  🔋 服务: {'🟢 运行中' if running else '🔴 未运行'}")
+    print(f"\n  服务: {'🟢 运行中' if running else '🔴 未运行'}")
 
     # CLI 信息
     if running:
@@ -334,5 +334,5 @@ def print_status():
         except:
             pass
 
-    print(f"\n  🌐 仪表盘: http://127.0.0.1:15889")
+    print(f"\n  仪表盘: http://127.0.0.1:15889")
     print()

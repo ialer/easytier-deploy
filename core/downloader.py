@@ -57,7 +57,7 @@ def get_remote_version():
             data = json.loads(resp.read())
             return data.get("tag_name", "").lstrip("v")
     except Exception as e:
-        print(f"  ⚠ 获取远程版本失败: {e}")
+        print(f"  获取远程版本失败: {e}")
         return None
 
 
@@ -73,7 +73,7 @@ def get_download_url(version, platform_key):
     """构造下载 URL"""
     et_platform = PLATFORM_MAP.get(platform_key)
     if not et_platform:
-        print(f"  ✗ 不支持的平台: {platform_key}")
+        print(f"  不支持的平台: {platform_key}")
         return None
 
     # EasyTier 所有平台统一用 .zip 格式
@@ -83,7 +83,7 @@ def get_download_url(version, platform_key):
 
 def download_file(url, dest):
     """下载文件，显示进度"""
-    print(f"  ↓ 下载中: {url.split('/')[-1]}")
+    print(f"  下载中: {url.split('/')[-1]}")
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "et-deploy/2.0"})
         with urllib.request.urlopen(req, timeout=120) as resp:
@@ -104,7 +104,7 @@ def download_file(url, dest):
             print()
         return True
     except Exception as e:
-        print(f"\n  ✗ 下载失败: {e}")
+        print(f"\n  下载失败: {e}")
         return False
 
 
@@ -116,7 +116,7 @@ def extract_archive(archive_path, platform_key):
         for name in zf.namelist():
             basename = os.path.basename(name)
             if basename and any(basename.startswith(p) for p in ["easytier-core", "easytier-cli"]):
-                print(f"  📦 解压: {basename}")
+                print(f"  解压: {basename}")
                 with zf.open(name) as src, open(BIN_DIR / basename, "wb") as dst:
                     dst.write(src.read())
                 # Linux/macOS 设置执行权限
@@ -132,17 +132,17 @@ def download_core(version=None, force=False):
     if not version:
         version = get_remote_version()
         if not version:
-            print("  ✗ 无法获取最新版本")
+            print("  无法获取最新版本")
             return False
 
     if local_ver == version and not force:
-        print(f"  ✓ 已是最新版本 v{version}")
+        print(f"  已是最新版本 v{version}")
         return True
 
     if local_ver:
-        print(f"  📦 更新: v{local_ver} → v{version}")
+        print(f"  更新: v{local_ver} → v{version}")
     else:
-        print(f"  📦 首次下载: v{version}")
+        print(f"  首次下载: v{version}")
 
     url = get_download_url(version, platform_key)
     if not url:
@@ -159,7 +159,7 @@ def download_core(version=None, force=False):
         extract_archive(tmp.name, platform_key)
         # 记录版本
         VERSION_FILE.write_text(version)
-        print(f"  ✓ 安装完成 v{version}")
+        print(f"  安装完成 v{version}")
         return True
     finally:
         try:
@@ -175,21 +175,21 @@ def update_core():
     remote_ver = get_remote_version()
 
     if not remote_ver:
-        print("  ✗ 无法获取远程版本信息")
+        print("  无法获取远程版本信息")
         return
 
     print(f"  本地版本: v{local_ver}" if local_ver else "  本地版本: 未安装")
     print(f"  最新版本: v{remote_ver}")
 
     if local_ver == remote_ver:
-        print("  ✓ 已是最新版本")
+        print("  已是最新版本")
         return
 
-    print(f"\n📦 开始更新...")
+    print(f"\n开始更新...")
     if download_core(remote_ver, force=True):
-        print("\n✓ 更新完成！建议运行 restart 重启服务。")
+        print("\n更新完成！建议运行 restart 重启服务。")
     else:
-        print("\n✗ 更新失败")
+        print("\n更新失败")
 
 
 def ensure_core():
@@ -202,5 +202,5 @@ def ensure_core():
     if core_path.exists() and cli_path.exists():
         return True
 
-    print("\n📦 EasyTier 核心文件未找到，开始自动下载...")
+    print("\nEasyTier 核心文件未找到，开始自动下载...")
     return download_core()

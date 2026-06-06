@@ -50,20 +50,20 @@ def run_install():
 
     # 检测平台
     system = platform.system()
-    print(f"  💻 操作系统: {system} ({platform.machine()})")
-    print(f"  📂 安装目录: {HERE}")
+    print(f"  操作系统: {system} ({platform.machine()})")
+    print(f"  安装目录: {HERE}")
     print()
 
     # 检查核心文件
     from .downloader import ensure_core, get_local_version, get_remote_version
     if not ensure_core():
-        print("  ✗ 核心文件下载失败，请检查网络")
+        print("  核心文件下载失败，请检查网络")
         sys.exit(1)
 
     local_ver = get_local_version()
     remote_ver = get_remote_version()
     if remote_ver and local_ver != remote_ver:
-        print(f"  📦 发现新版本 v{remote_ver}，当前 v{local_ver}")
+        print(f"  发现新版本 v{remote_ver}，当前 v{local_ver}")
         update = input("  是否更新？[Y/n]: ").strip().lower()
         if update != "n":
             from .downloader import download_core
@@ -82,7 +82,7 @@ def run_install():
     print("\n  引导节点 URI 格式: tcp://IP:端口")
     peer_uri = _input_with_default("引导节点 URI", "tcp://96.44.141.123:11010")
     while not _validate_uri(peer_uri):
-        print("  ✗ 格式错误，示例: tcp://1.2.3.4:11010")
+        print("  格式错误，示例: tcp://1.2.3.4:11010")
         peer_uri = _input_with_default("引导节点 URI", "tcp://96.44.141.123:11010")
 
     # 网段
@@ -90,7 +90,7 @@ def run_install():
     print("  建议: 引导服务器用 .1，其他设备 .2~.254")
     ipv4 = _input_with_default("虚拟 IP (含子网)", "10.0.0.1/24")
     while not _validate_ipv4(ipv4):
-        print("  ✗ 格式错误，示例: 10.0.0.5/24")
+        print("  格式错误，示例: 10.0.0.5/24")
         ipv4 = _input_with_default("虚拟 IP (含子网)", "10.0.0.1/24")
 
     # 主机名
@@ -105,7 +105,7 @@ def run_install():
     encryption = "aes-gcm" if enc_choice == "2" else ""
 
     # 生成配置
-    print("\n⚙️  生成配置文件...")
+    print("\n 生成配置文件...")
     config = f"""# EasyTier 节点配置
 # 由 et-deploy 自动生成
 
@@ -124,7 +124,7 @@ hostname = "{hostname}"
         config += f'encryption-algorithm = "{encryption}"\n'
 
     CONFIG_FILE.write_text(config)
-    print(f"  ✓ 配置已写入: {CONFIG_FILE}")
+    print(f"  配置已写入: {CONFIG_FILE}")
 
     # 注册服务
     from .service import service_install

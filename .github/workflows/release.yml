@@ -50,6 +50,8 @@ jobs:
       - name: Build (Windows)
         if: runner.os == 'Windows'
         run: python build.py
+        env:
+          PYTHONIOENCODING: utf-8
 
       - name: Rename binary
         shell: bash
