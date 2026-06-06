@@ -2,6 +2,42 @@
 
 一键部署 + 后台运行 + 开机自启 + 实时监控，支持 Windows / Linux / macOS。
 
+**零依赖** — 下载即可用，无需安装 Python 或其他环境。
+
+## 下载
+
+从 [GitHub Releases](../../releases) 下载对应平台的可执行文件：
+
+| 平台 | 文件 |
+|------|------|
+| Linux x64 | `et-deploy-linux-x64` |
+| Linux ARM64 | `et-deploy-linux-arm64` |
+| macOS x64 | `et-deploy-macos-x64` |
+| macOS ARM64 | `et-deploy-macos-arm64` |
+| Windows x64 | `et-deploy-windows-x64.exe` |
+
+## 快速开始
+
+### Linux / macOS
+
+```bash
+chmod +x et-deploy-linux-*
+./et-deploy-linux-x64 install
+```
+
+### Windows
+
+```cmd
+et-deploy-windows-x64.exe install
+```
+
+### Web 安装向导（可选）
+
+```bash
+./et-deploy web-install
+# 浏览器打开 http://127.0.0.1:15888
+```
+
 ## 特性
 
 - 🖥️ **跨平台** — Windows、Linux、macOS 全支持
@@ -9,50 +45,8 @@
 - 🔄 **版本检测** — 一键检查并更新到最新版本
 - 🔧 **免 root** — Linux/macOS 使用用户级服务，无需提权
 - 📊 **Web 仪表盘** — 实时监控网络状态
-- 🌐 **Web 安装向导** — 可视化配置，适合不熟悉命令行的用户
 - 🤫 **静默运行** — 后台服务，开机自启，无弹窗
-
-## 快速开始
-
-### 1. 安装 Python 3.8+
-
-```bash
-# Windows: 从 python.org 下载
-# macOS:
-brew install python3
-# Linux:
-sudo apt install python3   # Debian/Ubuntu
-sudo dnf install python3   # Fedora
-```
-
-### 2. 获取工具
-
-```bash
-git clone https://github.com/ialer/easytier-deploy.git
-cd easytier-deploy
-chmod +x et-deploy  # Linux/macOS
-```
-
-### 3. 交互式安装
-
-```bash
-python3 et-deploy install
-```
-
-按提示输入网络名称、密钥、引导节点等信息，工具会自动：
-- ✅ 下载 EasyTier 核心文件
-- ✅ 生成配置文件
-- ✅ 注册后台服务（开机自启）
-- ✅ 启动服务
-
-### 4. Web 安装向导（可选）
-
-```bash
-python3 et-deploy web-install
-# 浏览器打开 http://127.0.0.1:15888
-```
-
-提供图形化配置界面，适合团队成员使用。
+- 📦 **零依赖** — 打包为单个可执行文件，无需 Python
 
 ## 管理命令
 
@@ -85,20 +79,33 @@ et-deploy dashboard
 # 浏览器打开 http://127.0.0.1:15889
 ```
 
-功能：
-- 📊 在线节点数、延迟、丢包率
-- 🌐 本机信息（虚拟 IP、公网 IP、NAT 类型）
-- 📋 对等节点列表
-- 🗺️ 路由表
-- ⚙️ 在线编辑配置
+## 从源码构建
+
+如果需要自行构建：
+
+```bash
+# 安装 Python 3.8+ 和 PyInstaller
+pip install pyinstaller
+
+# 构建
+python3 build.py
+
+# 输出在 dist/ 目录
+```
+
+发布时推送到 GitHub tag 会自动构建多平台版本：
+```bash
+git tag v2.0.0
+git push --tags
+```
 
 ## 目录结构
 
 ```
 easytier-deploy/
-├── et-deploy              # 主入口脚本
+├── et-deploy              # 入口脚本
+├── build.py               # PyInstaller 构建脚本
 ├── core/                  # 核心模块
-│   ├── __init__.py
 │   ├── downloader.py      # 二进制下载 + 版本检测
 │   ├── installer.py       # 交互式安装
 │   ├── service.py         # 跨平台服务管理
@@ -107,12 +114,10 @@ easytier-deploy/
 ├── web/                   # Web 前端
 │   ├── installer.html     # 安装向导页面
 │   └── dashboard.html     # 监控仪表盘页面
-├── bin/                   # EasyTier 核心文件（自动下载）
-├── config.toml            # 节点配置（自动生成）
+├── .github/workflows/     # CI/CD 自动构建
+│   └── release.yml
 ├── config.toml.example    # 配置模板
-├── logs/                  # 运行日志
-├── README.md
-└── .gitignore
+└── README.md
 ```
 
 ## 虚拟 IP 分配
@@ -142,5 +147,3 @@ easytier-deploy/
 设备B  ──┼── 引导服务器(VPS) ── P2P直连/中继
 设备C  ──┘
 ```
-
-所有设备连接到引导节点，建立 P2P 直连或通过引导服务器中继通信。
